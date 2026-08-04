@@ -1,0 +1,41 @@
+[
+  {
+    "id": "9f3d417e-b128-4397-b3e0-a0d37ca08fcc",
+    "webSource": "chat",
+    "submittedAt": "2026-07-24T07:43:53.160Z",
+    "importedAt": null,
+    "name": "Test User",
+    "phone": "0400111222",
+    "email": "test@orcait.com.au",
+    "callDate": "2026-07-24",
+    "issueType": "Myself",
+    "issueDescription": "Need laptop help",
+    "address": "Melbourne",
+    "comment": "Source: Website chat/callback | Support for: Myself | Existing customer: No | Preferred contact: Afternoon",
+    "postCode": "",
+    "postCodeServiceable": true,
+    "deviceType": "Unknown",
+    "date": "24/07/2026, 05:43 pm",
+    "status": "Not Fixed",
+    "leadUser": "Website",
+    "assignedClientId": "",
+    "assignedClientName": "",
+    "isOnsite": false,
+    "outcome": "",
+    "sentStatus": "PENDING",
+    "sentToCustomer": false,
+    "sentToTechnician": false,
+    "preferredContactTime": "Afternoon",
+    "suburb": "Melbourne",
+    "raw": {
+      "supportFor": "Myself",
+      "existingCustomer": "No",
+      "name": "Test User",
+      "phone": "0400111222",
+      "email": "test@orcait.com.au",
+      "suburb": "Melbourne",
+      "issue": "Need laptop help",
+      "preferredContactTime": "Afternoon"
+    }
+  }
+]

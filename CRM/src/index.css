@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-800 antialiased;
+  }
+}
+
+@layer components {
+  .input-field {
+    @apply w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800
+           placeholder:text-slate-400 transition-all duration-200
+           focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-400/20;
+  }
+
+  .select-field {
+    @apply w-full rounded-lg border border-slate-200 bg-white px-3.5 py-2 text-xs text-slate-800
+           transition-all duration-200 cursor-pointer
+           focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-400/20;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg bg-brand-500 px-4 py-2
+           text-xs font-semibold text-white shadow-sm transition-all duration-200
+           hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-400/40
+           active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-slate-200
+           bg-white px-4 py-2 text-xs font-medium text-slate-700 shadow-sm
+           transition-all duration-200 hover:bg-slate-50 focus:outline-none
+           focus:ring-2 focus:ring-slate-300/50 active:scale-[0.98];
+  }
+
+  .badge {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+  }
+
+  .badge-green {
+    @apply badge bg-emerald-50 text-emerald-700 ring-1 ring-emerald-600/20;
+  }
+
+  .badge-blue {
+    @apply badge bg-blue-50 text-blue-700 ring-1 ring-blue-600/20;
+  }
+
+  .badge-orange {
+    @apply badge bg-amber-50 text-amber-700 ring-1 ring-amber-600/20;
+  }
+
+  .badge-red {
+    @apply badge bg-red-50 text-red-700 ring-1 ring-red-600/20;
+  }
+
+  .badge-gray {
+    @apply badge bg-slate-100 text-slate-600 ring-1 ring-slate-500/20;
+  }
+
+  .date-input {
+    @apply cursor-pointer;
+    position: relative;
+  }
+
+  .date-input::-webkit-calendar-picker-indicator {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
