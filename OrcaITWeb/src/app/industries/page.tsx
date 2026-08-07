@@ -34,7 +34,7 @@ export default function IndustriesPage() {
                   <li>• Clear communication with your team</li>
                 </ul>
                 <Link
-                  href="/book-now"
+                  href="/book"
                   className="mt-8 inline-flex items-center gap-2 font-bold text-brand-blue hover:text-brand-navy"
                 >
                   Talk to us
@@ -49,7 +49,7 @@ export default function IndustriesPage() {
       <section className="bg-white py-20 lg:py-24">
         <div className="mx-auto grid max-w-7xl gap-6 px-5 md:grid-cols-2 lg:px-8">
           <Link
-            href="/book-now"
+            href="/book"
             className="group rounded-[2rem] border border-red-100 bg-brand-mist/50 p-8 transition hover:border-brand-fun hover:shadow-xl"
           >
             <span className="grid size-12 place-items-center rounded-2xl bg-white text-brand-fun shadow-sm">
@@ -67,7 +67,7 @@ export default function IndustriesPage() {
             </span>
           </Link>
           <Link
-            href="/book-now"
+            href="/book"
             className="group rounded-[2rem] border border-red-100 bg-brand-mist/50 p-8 transition hover:border-brand-fun hover:shadow-xl"
           >
             <span className="grid size-12 place-items-center rounded-2xl bg-white text-brand-fun shadow-sm">

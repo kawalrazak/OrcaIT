@@ -21,6 +21,9 @@ export default function BusinessItPage() {
       eyebrow="Business IT"
       title="Technology that keeps your business moving."
       description="From managed support to custom software and cloud — practical solutions built for Australian teams."
+      heroImage="/orca-business-it-team.png"
+      heroImageAlt="Orca IT business team standing together in the office"
+      heroImagePosition="object-[center_40%]"
     >
       <section className="bg-white py-20 lg:py-28">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">

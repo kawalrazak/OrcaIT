@@ -13,6 +13,7 @@ import {
   Tag,
   User,
 } from "lucide-react";
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import {
   formatBookingDate,
@@ -215,10 +216,17 @@ export function BookNowWizard() {
     <div className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_-28px_rgba(6,69,143,0.45)]">
       {step !== "confirmed" ? (
         <div className="bg-gradient-to-r from-brand-blue to-brand-ink px-6 py-7 text-white sm:px-8">
-          <p className="text-xs font-black uppercase tracking-[0.16em] text-brand-sky">
-            Secure your slot
-          </p>
-          <h1 className="mt-2 text-3xl font-black tracking-tight">Book Your Appointment</h1>
+          <Image
+            src="/orca-logo.png?v=5"
+            alt="ORCA IT"
+            width={220}
+            height={112}
+            className="mb-4 h-10 w-auto object-contain sm:h-12"
+            unoptimized
+          />
+          <h1 className="text-2xl font-black tracking-tight sm:text-[1.75rem]">
+            Book Your Appointment
+          </h1>
           <p className="mt-2 text-sm text-blue-100">
             Fast online booking — pick a service, date and technician
           </p>

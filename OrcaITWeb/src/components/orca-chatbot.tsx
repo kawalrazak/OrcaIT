@@ -342,7 +342,7 @@ export function OrcaChatbot() {
                 ))}
                 {bookingStep === 0 ? (
                   <Link
-                    href="/book-now"
+                    href="/book"
                     className="rounded-full bg-[#31c4e8] px-5 py-2 font-bold text-white hover:bg-[#1fb5db]"
                   >
                     Fill booking form

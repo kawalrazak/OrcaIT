@@ -18,6 +18,9 @@ export default function WhatWeDoPage() {
       eyebrow="What We Do"
       title="Practical IT help for your home."
       description="Friendly, clear support for the technology you use every day — remotely or at your place."
+      heroImage="/orca-what-we-do-team.png"
+      heroImageAlt="Orca IT support team smiling in the office with headsets"
+      heroImagePosition="object-[center_35%]"
     >
       <section className="bg-surface py-20 lg:py-28">
         <div className="mx-auto max-w-7xl px-5 lg:px-8">
@@ -44,7 +47,7 @@ export default function WhatWeDoPage() {
 
           <div className="mt-12">
             <Link
-              href="/book-now"
+              href="/book"
               className="inline-flex items-center gap-2 font-bold text-brand-blue hover:text-brand-navy"
             >
               Book home support

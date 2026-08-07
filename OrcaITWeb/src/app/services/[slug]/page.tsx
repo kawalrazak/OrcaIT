@@ -75,7 +75,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
             </p>
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
               <Link
-                href="/book-now"
+                href="/book"
                 className="group inline-flex items-center justify-center gap-2 rounded-full bg-brand-fun px-7 py-4 font-black text-white shadow-xl shadow-red-900/25 transition hover:-translate-y-0.5 hover:bg-red-600"
               >
                 Talk to Orca IT
@@ -188,7 +188,7 @@ export default async function ServiceDetailPage({ params }: PageProps) {
             Tell us what you need and we’ll recommend the simplest, most practical next step.
           </p>
           <Link
-            href="/book-now"
+            href="/book"
             className="mt-8 inline-flex items-center justify-center gap-2 rounded-full bg-brand-fun px-7 py-4 font-black text-white transition hover:bg-red-600"
           >
             Book an appointment

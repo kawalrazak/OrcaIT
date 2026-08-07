@@ -52,7 +52,7 @@ export default function WhyOrcaItPage() {
           {ORCA_PHONE_DISPLAY}
         </a>{" "}
         or{" "}
-        <Link href="/book-now" className="underline underline-offset-4">
+        <Link href="/book" className="underline underline-offset-4">
           book online
         </Link>
       </div>

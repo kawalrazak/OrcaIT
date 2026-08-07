@@ -89,7 +89,7 @@ export default function AboutPage() {
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Link
-              href="/book-now"
+              href="/book"
               className="rounded-full bg-brand-fun px-7 py-4 font-black text-white transition hover:bg-red-600"
             >
               Book Online

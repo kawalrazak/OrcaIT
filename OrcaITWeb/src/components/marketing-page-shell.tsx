@@ -14,6 +14,7 @@ type MarketingPageShellProps = {
   heroImage?: string;
   heroImageAlt?: string;
   heroImagePosition?: string;
+  bookHref?: string;
 };
 
 export function MarketingPageShell({
@@ -24,6 +25,7 @@ export function MarketingPageShell({
   heroImage,
   heroImageAlt = "Orca IT",
   heroImagePosition = "object-[center_30%]",
+  bookHref = "/book",
 }: MarketingPageShellProps) {
   return (
     <main className="overflow-hidden bg-white">
@@ -75,7 +77,7 @@ export function MarketingPageShell({
           </p>
           <div className="mt-9 flex flex-col gap-4 sm:flex-row">
             <Link
-              href="/book-now"
+              href={bookHref}
               className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-fun px-7 py-4 font-black text-white transition hover:bg-red-600"
             >
               Book Online
@@ -105,7 +107,7 @@ export function MarketingPageShell({
             </p>
             <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link
-                href="/book-now"
+                href={bookHref}
                 className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-fun px-7 py-4 font-black text-white transition hover:bg-red-600"
               >
                 Book an appointment
