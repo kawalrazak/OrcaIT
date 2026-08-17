@@ -9,8 +9,6 @@ services:
     volumes:
       - orca_data:/app/data          # persists booking/chat-lead CSVs
     restart: unless-stopped
-    ports:
-      - "3000:3000"   # open marketing site at http://localhost:3000
     expose:
       - "3000"
     depends_on:
@@ -24,8 +22,6 @@ services:
     volumes:
       - crm_data:/app/data           # persists website leads for CRM
     restart: unless-stopped
-    ports:
-      - "3001:3001"   # open CRM in browser at http://localhost:3001
     expose:
       - "3001"
 
