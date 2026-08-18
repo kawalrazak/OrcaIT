@@ -1,0 +1,16 @@
+# Local development only — binds to 127.0.0.1 so ports are NOT exposed on your public IP.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+services:
+  web:
+    ports:
+      - "127.0.0.1:3000:3000"
+
+  crm:
+    ports:
+      - "127.0.0.1:3001:3001"
+
+  nginx:
+    ports:
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro

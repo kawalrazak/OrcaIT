@@ -17,8 +17,44 @@ CRM-Site/
 └── CRM/                    # Dockerfile + .env
 ```
 
-Only nginx's **port 80** is exposed publicly. The apps talk to nginx over the internal
-Docker network (`expose`, not `ports`), so 3000/3001 are never reachable from outside.
+Only nginx's **port 80/443** is exposed publicly. The apps use internal Docker ports
+(`expose`, not `ports`), so **3000/3001 are never reachable from your public IP**.
+
+### Local development (Windows / Mac)
+
+**Option A — fastest (no Docker):**
+```bash
+cd OrcaITWeb
+npm install
+npm run dev
+```
+Open **http://localhost:3000**
+
+**Option B — full stack via Docker (localhost only):**
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+| App | URL |
+|-----|-----|
+| Marketing | http://localhost:3000 or http://localhost:8080 |
+| CRM | http://localhost:3001 |
+| Via nginx | http://localhost:8080 |
+
+### Production (VPS)
+
+| App | URL |
+|-----|-----|
+| Marketing | https://orcait.com.au |
+| CRM | https://crm.orcait.com.au |
+| Raw IP | http://YOUR-VPS-IP/ (marketing via nginx port 80) |
+
+Do **not** use `http://IP:3000` or `http://IP:3001` — those ports are closed on purpose.
+
+After changing `nginx/nginx.conf` on the VPS:
+```bash
+git pull
+docker compose restart nginx
+```
 
 ---
 
@@ -88,9 +124,15 @@ docker compose ps
 
 Verify:
 ```bash
-curl -H "Host: orcait.com.au"     http://localhost/          # marketing site HTML
+curl http://localhost/                               # marketing site (via nginx port 80)
+curl -H "Host: orcait.com.au" http://localhost/      # marketing site HTML
 curl -H "Host: crm.orcait.com.au" http://localhost/api/health # {"ok":true,...}
 ```
+
+Public URLs (ports 3000/3001 are **not** exposed):
+- Marketing: `http://orcait.com.au` or `https://orcait.com.au`
+- CRM: `http://crm.orcait.com.au` or `https://crm.orcait.com.au`
+- Raw IP: `http://YOUR-VPS-IP/` (marketing site via nginx on port 80)
 
 ---
 

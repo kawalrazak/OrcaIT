@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Home, ShieldCheck, Smile, Star } from "lucide-react";
+import { HeroSlider } from "@/components/hero-slider";
 import { HomeContactForm } from "@/components/home-contact-form";
 import { SiteHeader } from "@/components/site-header";
 import { ORCA_EMAIL, ORCA_PHONE_DISPLAY, ORCA_PHONE_TEL } from "@/data/contact";
@@ -53,21 +54,14 @@ export default function HomePage() {
       <SiteHeader />
 
       <section className="relative min-h-[70vh] overflow-hidden text-white sm:min-h-[78vh]">
-        <Image
-          src="/hero-van.jpg"
-          alt="ORCA IT service van providing IT services for home and business"
-          fill
-          priority
-          className="object-cover object-[center_45%]"
-          sizes="100vw"
-        />
+        <HeroSlider />
         <div className="absolute inset-0 bg-brand-blue/45" />
         <div className="absolute inset-0 bg-gradient-to-t from-brand-ink/45 via-brand-blue/10 to-brand-fun/10" />
 
         <div className="relative mx-auto flex min-h-[70vh] max-w-7xl flex-col justify-center px-5 py-20 sm:min-h-[78vh] lg:px-8">
           <div className="mx-auto max-w-4xl text-center">
             <p className="mb-4 inline-flex rounded-full bg-brand-fun px-4 py-1.5 text-xs font-black uppercase tracking-[0.16em] text-white">
-              Friendly experts. Fast solutions.
+              No solution, no fee
             </p>
             <h1 className="text-3xl font-extrabold leading-tight tracking-[-0.04em] text-white sm:text-5xl lg:text-6xl">
               IT help that gets you back to life
