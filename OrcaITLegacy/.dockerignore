@@ -1,0 +1,2 @@
+# Legacy PHP site for older browsers (Safari 11–12 / macOS High Sierra).
+# Built from repo root: docker compose build legacy

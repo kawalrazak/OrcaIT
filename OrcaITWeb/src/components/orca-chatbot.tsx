@@ -87,12 +87,20 @@ const bookingQuestions: Array<{
   },
 ];
 
+const THINKING_DELAY_MS = 3000;
+
 const quickQuestions = [
   "Book an appointment",
   "What services do you offer?",
   "How much will it cost?",
   "Can I speak to someone?",
 ];
+
+function wait(ms: number) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
 
 function generalReply(message: string) {
   const text = message.toLowerCase();
@@ -145,11 +153,13 @@ export function OrcaChatbot() {
   const [bookingStep, setBookingStep] = useState<number | null>(null);
   const [lead, setLead] = useState<Lead>(emptyLead);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isThinking, setIsThinking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const busy = isSubmitting || isThinking;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isSubmitting]);
+  }, [messages, isSubmitting, isThinking]);
 
   useEffect(() => {
     function openChat() {
@@ -164,11 +174,20 @@ export function OrcaChatbot() {
     setMessages((current) => [...current, ...newMessages]);
   }
 
-  function startBooking() {
+  async function replyAsBot(...botMessages: Message[]) {
+    setIsThinking(true);
+    await wait(THINKING_DELAY_MS);
+    setIsThinking(false);
+    addMessages(...botMessages);
+  }
+
+  async function startBooking() {
+    if (busy) return;
+
     setLead(emptyLead);
     setBookingStep(0);
-    addMessages(
-      { from: "user", text: "I would like to book an appointment." },
+    addMessages({ from: "user", text: "I would like to book an appointment." });
+    await replyAsBot(
       { from: "bot", text: "I can help you book an appointment." },
       {
         from: "bot",
@@ -178,16 +197,16 @@ export function OrcaChatbot() {
     );
   }
 
-  function selectQuickQuestion(question: string) {
+  async function selectQuickQuestion(question: string) {
+    if (busy) return;
+
     if (question === "Book an appointment") {
-      startBooking();
+      await startBooking();
       return;
     }
 
-    addMessages(
-      { from: "user", text: question },
-      { from: "bot", text: generalReply(question) },
-    );
+    addMessages({ from: "user", text: question });
+    await replyAsBot({ from: "bot", text: generalReply(question) });
   }
 
   async function saveLead(completedLead: Lead) {
@@ -222,13 +241,14 @@ export function OrcaChatbot() {
   }
 
   async function answerBookingQuestion(answer: string) {
-    if (bookingStep === null) return;
+    if (bookingStep === null || busy) return;
 
     const question = bookingQuestions[bookingStep];
     const error = validationError(question.field, answer);
 
     if (error) {
-      addMessages({ from: "user", text: answer }, { from: "bot", text: error });
+      addMessages({ from: "user", text: answer });
+      await replyAsBot({ from: "bot", text: error });
       return;
     }
 
@@ -239,8 +259,11 @@ export function OrcaChatbot() {
     const nextStep = bookingStep + 1;
     if (nextStep < bookingQuestions.length) {
       setBookingStep(nextStep);
-      addMessages({ from: "bot", text: bookingQuestions[nextStep].prompt });
+      await replyAsBot({ from: "bot", text: bookingQuestions[nextStep].prompt });
     } else {
+      setIsThinking(true);
+      await wait(THINKING_DELAY_MS);
+      setIsThinking(false);
       await saveLead(updatedLead);
     }
   }
@@ -248,7 +271,7 @@ export function OrcaChatbot() {
   async function submitMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const answer = message.trim();
-    if (!answer || isSubmitting) return;
+    if (!answer || busy) return;
     setMessage("");
 
     if (bookingStep !== null) {
@@ -257,14 +280,12 @@ export function OrcaChatbot() {
     }
 
     if (answer.toLowerCase().includes("book") || answer.toLowerCase().includes("appointment")) {
-      startBooking();
+      await startBooking();
       return;
     }
 
-    addMessages(
-      { from: "user", text: answer },
-      { from: "bot", text: generalReply(answer) },
-    );
+    addMessages({ from: "user", text: answer });
+    await replyAsBot({ from: "bot", text: generalReply(answer) });
   }
 
   const currentQuestion = bookingStep === null ? null : bookingQuestions[bookingStep];
@@ -320,6 +341,29 @@ export function OrcaChatbot() {
                   </div>
                 ),
               )}
+              {isThinking && (
+                <div className="flex items-start gap-3">
+                  <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-brand-mist">
+                    <Image
+                      src="/orca-icon.png?v=4"
+                      alt=""
+                      width={40}
+                      height={40}
+                      className="size-full object-contain"
+                      unoptimized
+                    />
+                  </div>
+                  <div>
+                    <p className="mb-1 text-xs font-semibold text-slate-600">Orca IT</p>
+                    <div className="inline-flex items-center gap-1 rounded-2xl rounded-tl-sm bg-slate-100 px-5 py-3 text-slate-500">
+                      <span className="sr-only">Orca IT is thinking</span>
+                      <span className="size-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]" />
+                      <span className="size-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]" />
+                      <span className="size-2 animate-bounce rounded-full bg-slate-400" />
+                    </div>
+                  </div>
+                </div>
+              )}
               {isSubmitting && (
                 <div className="pl-13 text-sm font-semibold text-slate-500">
                   Saving your booking details…
@@ -328,14 +372,15 @@ export function OrcaChatbot() {
               <div ref={messagesEndRef} />
             </div>
 
-            {(bookingStep === 0 || bookingStep === 3) && (
+            {(bookingStep === 0 || bookingStep === 3) && !busy && (
               <div className="ml-13 mt-4 flex flex-wrap gap-2">
                 {(bookingStep === 0 ? ["Yes", "No"] : ["Home", "Business"]).map((answer) => (
                   <button
                     key={answer}
                     type="button"
                     onClick={() => void answerBookingQuestion(answer)}
-                    className="rounded-full bg-brand-blue px-5 py-2 font-bold text-white hover:bg-brand-ink"
+                    disabled={busy}
+                    className="rounded-full bg-brand-blue px-5 py-2 font-bold text-white hover:bg-brand-ink disabled:opacity-50"
                   >
                     {answer}
                   </button>
@@ -351,13 +396,13 @@ export function OrcaChatbot() {
               </div>
             )}
 
-            {bookingStep === null && !isSubmitting && (
+            {bookingStep === null && !busy && (
               <div className="mt-6 flex flex-wrap gap-2">
                 {quickQuestions.map((question) => (
                   <button
                     key={question}
                     type="button"
-                    onClick={() => selectQuickQuestion(question)}
+                    onClick={() => void selectQuickQuestion(question)}
                     className="rounded-full border border-blue-200 px-3 py-2 text-xs font-bold text-brand-blue hover:bg-brand-mist"
                   >
                     {question}
@@ -374,13 +419,13 @@ export function OrcaChatbot() {
                 onChange={(event) => setMessage(event.target.value)}
                 placeholder={currentQuestion?.placeholder ?? "Type your message..."}
                 inputMode={currentQuestion?.inputMode}
-                disabled={isSubmitting}
+                disabled={busy}
                 aria-label="Chat message"
                 className="min-w-0 flex-1 rounded-full border-2 border-blue-300 px-5 py-3 text-base text-slate-800 outline-none placeholder:text-slate-400 focus:border-brand-blue disabled:bg-slate-100"
               />
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={busy}
                 className="grid size-13 shrink-0 place-items-center rounded-full bg-brand-blue text-white hover:bg-brand-ink disabled:opacity-50"
                 aria-label="Send message"
               >

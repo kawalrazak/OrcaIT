@@ -1,0 +1,21 @@
+RewriteEngine On
+RewriteBase /
+
+# Pretty URLs matching the modern site
+RewriteRule ^$ index.php [L]
+RewriteRule ^book/?$ book.php [L]
+RewriteRule ^book-now/?$ book.php [L]
+RewriteRule ^booking/?$ book.php [L]
+RewriteRule ^about/?$ about.php [L]
+RewriteRule ^what-we-do/?$ what-we-do.php [L]
+RewriteRule ^business-it/?$ business-it.php [L]
+RewriteRule ^why-orca-it/?$ why-orca-it.php [L]
+RewriteRule ^industries/?$ industries.php [L]
+RewriteRule ^services/([a-z0-9-]+)/?$ service.php?slug=$1 [L,QSA]
+
+# Leave real files (CSS, images) alone
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+RewriteRule ^ index.php [L]
