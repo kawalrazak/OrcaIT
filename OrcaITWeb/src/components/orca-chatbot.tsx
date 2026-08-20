@@ -133,6 +133,38 @@ function validationError(field: LeadField, value: string) {
   return null;
 }
 
+function typingDelayMs(text: string) {
+  return Math.min(2200, Math.max(850, 650 + text.length * 18));
+}
+
+function TypingIndicator() {
+  return (
+    <div className="flex items-start gap-3">
+      <div className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-brand-mist">
+        <Image
+          src="/orca-icon.png?v=4"
+          alt="Orca IT assistant"
+          width={40}
+          height={40}
+          className="size-full object-contain"
+          unoptimized
+        />
+      </div>
+      <div>
+        <p className="mb-1 text-xs font-semibold text-slate-600">Orca IT</p>
+        <div
+          className="inline-flex items-center gap-1.5 rounded-2xl rounded-tl-sm bg-slate-100 px-4 py-3"
+          aria-label="Orca IT is typing"
+        >
+          <span className="size-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.3s]" />
+          <span className="size-2 animate-bounce rounded-full bg-slate-400 [animation-delay:-0.15s]" />
+          <span className="size-2 animate-bounce rounded-full bg-slate-400" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function OrcaChatbot() {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
@@ -145,11 +177,12 @@ export function OrcaChatbot() {
   const [bookingStep, setBookingStep] = useState<number | null>(null);
   const [lead, setLead] = useState<Lead>(emptyLead);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isSubmitting]);
+  }, [messages, isSubmitting, isTyping]);
 
   useEffect(() => {
     function openChat() {
@@ -164,30 +197,43 @@ export function OrcaChatbot() {
     setMessages((current) => [...current, ...newMessages]);
   }
 
-  function startBooking() {
+  async function replyAsBot(...texts: string[]) {
+    for (let i = 0; i < texts.length; i += 1) {
+      setIsTyping(true);
+      await new Promise((resolve) => {
+        window.setTimeout(resolve, typingDelayMs(texts[i]));
+      });
+      setIsTyping(false);
+      addMessages({ from: "bot", text: texts[i] });
+      if (i < texts.length - 1) {
+        await new Promise((resolve) => {
+          window.setTimeout(resolve, 280);
+        });
+      }
+    }
+  }
+
+  async function startBooking() {
     setLead(emptyLead);
     setBookingStep(0);
-    addMessages(
-      { from: "user", text: "I would like to book an appointment." },
-      { from: "bot", text: "I can help you book an appointment." },
-      {
-        from: "bot",
-        text: "You can fill our booking form now, or answer a few quick questions here.",
-      },
-      { from: "bot", text: bookingQuestions[0].prompt },
+    addMessages({ from: "user", text: "I would like to book an appointment." });
+    await replyAsBot(
+      "I can help you book an appointment.",
+      "You can fill our booking form now, or answer a few quick questions here.",
+      bookingQuestions[0].prompt,
     );
   }
 
-  function selectQuickQuestion(question: string) {
+  async function selectQuickQuestion(question: string) {
+    if (isTyping || isSubmitting) return;
+
     if (question === "Book an appointment") {
-      startBooking();
+      await startBooking();
       return;
     }
 
-    addMessages(
-      { from: "user", text: question },
-      { from: "bot", text: generalReply(question) },
-    );
+    addMessages({ from: "user", text: question });
+    await replyAsBot(generalReply(question));
   }
 
   async function saveLead(completedLead: Lead) {
@@ -203,32 +249,30 @@ export function OrcaChatbot() {
 
       if (!response.ok) throw new Error(result.error);
 
-      addMessages({
-        from: "bot",
-        text: `Thank you, ${completedLead.name}. Your details have been saved and the Orca IT team will contact you on ${completedLead.phone}.`,
-      });
+      await replyAsBot(
+        `Thank you, ${completedLead.name}. Your details have been saved and the Orca IT team will contact you on ${completedLead.phone}.`,
+      );
       setBookingStep(null);
     } catch (error) {
-      addMessages({
-        from: "bot",
-        text:
-          error instanceof Error && error.message
-            ? error.message
-            : `I couldn’t save your details. Please call ${ORCA_PHONE_DISPLAY}.`,
-      });
+      await replyAsBot(
+        error instanceof Error && error.message
+          ? error.message
+          : `I couldn’t save your details. Please call ${ORCA_PHONE_DISPLAY}.`,
+      );
     } finally {
       setIsSubmitting(false);
     }
   }
 
   async function answerBookingQuestion(answer: string) {
-    if (bookingStep === null) return;
+    if (bookingStep === null || isTyping || isSubmitting) return;
 
     const question = bookingQuestions[bookingStep];
     const error = validationError(question.field, answer);
 
     if (error) {
-      addMessages({ from: "user", text: answer }, { from: "bot", text: error });
+      addMessages({ from: "user", text: answer });
+      await replyAsBot(error);
       return;
     }
 
@@ -239,7 +283,7 @@ export function OrcaChatbot() {
     const nextStep = bookingStep + 1;
     if (nextStep < bookingQuestions.length) {
       setBookingStep(nextStep);
-      addMessages({ from: "bot", text: bookingQuestions[nextStep].prompt });
+      await replyAsBot(bookingQuestions[nextStep].prompt);
     } else {
       await saveLead(updatedLead);
     }
@@ -248,7 +292,7 @@ export function OrcaChatbot() {
   async function submitMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const answer = message.trim();
-    if (!answer || isSubmitting) return;
+    if (!answer || isSubmitting || isTyping) return;
     setMessage("");
 
     if (bookingStep !== null) {
@@ -257,14 +301,12 @@ export function OrcaChatbot() {
     }
 
     if (answer.toLowerCase().includes("book") || answer.toLowerCase().includes("appointment")) {
-      startBooking();
+      await startBooking();
       return;
     }
 
-    addMessages(
-      { from: "user", text: answer },
-      { from: "bot", text: generalReply(answer) },
-    );
+    addMessages({ from: "user", text: answer });
+    await replyAsBot(generalReply(answer));
   }
 
   const currentQuestion = bookingStep === null ? null : bookingQuestions[bookingStep];
@@ -320,22 +362,24 @@ export function OrcaChatbot() {
                   </div>
                 ),
               )}
-              {isSubmitting && (
+              {isTyping ? <TypingIndicator /> : null}
+              {isSubmitting && !isTyping ? (
                 <div className="pl-13 text-sm font-semibold text-slate-500">
                   Saving your booking details…
                 </div>
-              )}
+              ) : null}
               <div ref={messagesEndRef} />
             </div>
 
-            {(bookingStep === 0 || bookingStep === 3) && (
+            {(bookingStep === 0 || bookingStep === 3) && !isTyping && (
               <div className="ml-13 mt-4 flex flex-wrap gap-2">
                 {(bookingStep === 0 ? ["Yes", "No"] : ["Home", "Business"]).map((answer) => (
                   <button
                     key={answer}
                     type="button"
                     onClick={() => void answerBookingQuestion(answer)}
-                    className="rounded-full bg-brand-blue px-5 py-2 font-bold text-white hover:bg-brand-ink"
+                    disabled={isTyping || isSubmitting}
+                    className="rounded-full bg-brand-blue px-5 py-2 font-bold text-white hover:bg-brand-ink disabled:opacity-50"
                   >
                     {answer}
                   </button>
@@ -351,13 +395,13 @@ export function OrcaChatbot() {
               </div>
             )}
 
-            {bookingStep === null && !isSubmitting && (
+            {bookingStep === null && !isSubmitting && !isTyping && (
               <div className="mt-6 flex flex-wrap gap-2">
                 {quickQuestions.map((question) => (
                   <button
                     key={question}
                     type="button"
-                    onClick={() => selectQuickQuestion(question)}
+                    onClick={() => void selectQuickQuestion(question)}
                     className="rounded-full border border-blue-200 px-3 py-2 text-xs font-bold text-brand-blue hover:bg-brand-mist"
                   >
                     {question}
@@ -374,13 +418,13 @@ export function OrcaChatbot() {
                 onChange={(event) => setMessage(event.target.value)}
                 placeholder={currentQuestion?.placeholder ?? "Type your message..."}
                 inputMode={currentQuestion?.inputMode}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isTyping}
                 aria-label="Chat message"
                 className="min-w-0 flex-1 rounded-full border-2 border-blue-300 px-5 py-3 text-base text-slate-800 outline-none placeholder:text-slate-400 focus:border-brand-blue disabled:bg-slate-100"
               />
               <button
                 type="submit"
-                disabled={isSubmitting}
+                disabled={isSubmitting || isTyping}
                 className="grid size-13 shrink-0 place-items-center rounded-full bg-brand-blue text-white hover:bg-brand-ink disabled:opacity-50"
                 aria-label="Send message"
               >
