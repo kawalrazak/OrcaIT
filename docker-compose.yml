@@ -36,6 +36,8 @@ services:
     restart: unless-stopped
     expose:
       - "80"
+    ports:
+      - "8080:80"
     depends_on:
       - crm
 

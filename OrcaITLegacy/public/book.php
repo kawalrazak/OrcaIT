@@ -61,51 +61,73 @@ require __DIR__ . '/../includes/header.php';
                         </p>
                     <?php endif; ?>
 
-                    <form class="contact-form" method="post" action="/book">
+                    <form method="post" action="/book">
                         <div class="hp-field">
                             <label for="website">Website</label>
                             <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
                         </div>
 
-                        <div class="form-row">
-                            <label for="postcode">Your postcode</label>
-                            <input type="text" id="postcode" name="postcode" maxlength="4" value="<?= h(postedValue($posted, 'postcode')) ?>">
-                        </div>
-                        <div class="form-row">
-                            <label for="name">Name*</label>
-                            <input type="text" id="name" name="name" required maxlength="200" value="<?= h(postedValue($posted, 'name')) ?>">
-                        </div>
-                        <div class="form-row">
-                            <label for="phone">Phone*</label>
-                            <input type="tel" id="phone" name="phone" required maxlength="30" value="<?= h(postedValue($posted, 'phone')) ?>">
-                        </div>
-                        <div class="form-row">
-                            <label for="email">Email*</label>
-                            <input type="email" id="email" name="email" required maxlength="200" value="<?= h(postedValue($posted, 'email')) ?>">
-                        </div>
-                        <div class="form-row">
-                            <label for="suburb">Suburb*</label>
-                            <input type="text" id="suburb" name="suburb" required maxlength="200" value="<?= h(postedValue($posted, 'suburb')) ?>">
-                        </div>
-                        <div class="form-row">
-                            <label for="service">Service needed*</label>
-                            <?php $selectedService = postedValue($posted, 'service'); ?>
-                            <select id="service" name="service" required>
-                                <option value="">Choose a service</option>
-                                <?php foreach (array('Home IT support', 'Business IT support', 'Cyber security', 'Cloud / Microsoft 365', 'Network / Wi-Fi', 'Other') as $option): ?>
-                                    <option value="<?= h($option) ?>"<?= $selectedService === $option ? ' selected="selected"' : '' ?>><?= h($option) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                        <div class="form-row">
-                            <label for="preferredTime">Preferred date / time</label>
-                            <input type="text" id="preferredTime" name="preferredTime" maxlength="200" value="<?= h(postedValue($posted, 'preferredTime')) ?>">
-                        </div>
-                        <div class="form-row">
-                            <label for="notes">Additional details</label>
-                            <textarea id="notes" name="notes" maxlength="1000"><?= h(postedValue($posted, 'notes')) ?></textarea>
-                        </div>
-                        <button class="btn btn-primary" type="submit">Request booking</button>
+                        <table class="form-table" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td>
+                                    <label for="postcode">Your postcode</label>
+                                    <input type="text" id="postcode" name="postcode" maxlength="4" value="<?= h(postedValue($posted, 'postcode')) ?>">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label for="name">Name *</label>
+                                    <input type="text" id="name" name="name" required maxlength="200" value="<?= h(postedValue($posted, 'name')) ?>">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label for="phone">Phone *</label>
+                                    <input type="text" id="phone" name="phone" required maxlength="30" value="<?= h(postedValue($posted, 'phone')) ?>">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label for="email">Email *</label>
+                                    <input type="text" id="email" name="email" required maxlength="200" value="<?= h(postedValue($posted, 'email')) ?>">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label for="suburb">Suburb *</label>
+                                    <input type="text" id="suburb" name="suburb" required maxlength="200" value="<?= h(postedValue($posted, 'suburb')) ?>">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label for="service">Service needed *</label>
+                                    <?php $selectedService = postedValue($posted, 'service'); ?>
+                                    <select id="service" name="service" required>
+                                        <option value="">Choose a service</option>
+                                        <?php foreach (array('Home IT support', 'Business IT support', 'Cyber security', 'Cloud / Microsoft 365', 'Network / Wi-Fi', 'Other') as $option): ?>
+                                            <option value="<?= h($option) ?>"<?= $selectedService === $option ? ' selected="selected"' : '' ?>><?= h($option) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label for="preferredTime">Preferred date / time</label>
+                                    <input type="text" id="preferredTime" name="preferredTime" maxlength="200" value="<?= h(postedValue($posted, 'preferredTime')) ?>">
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <label for="notes">Additional details</label>
+                                    <textarea id="notes" name="notes" maxlength="1000"><?= h(postedValue($posted, 'notes')) ?></textarea>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <button class="btn btn-primary" type="submit">Request booking</button>
+                                </td>
+                            </tr>
+                        </table>
                     </form>
                 </td>
                 <td>

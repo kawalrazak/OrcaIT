@@ -1,6 +1,6 @@
 FROM php:8.2-apache
 
-RUN a2enmod rewrite headers
+RUN a2enmod rewrite headers headers
 
 WORKDIR /var/www/html
 

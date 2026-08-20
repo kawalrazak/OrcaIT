@@ -26,9 +26,15 @@ $navItems = array(
     <title><?= pageTitle($pageTitle) ?></title>
     <meta name="description" content="<?= h($pageDescription) ?>">
     <link rel="icon" href="/assets/favicon.png" type="image/png">
-    <link rel="stylesheet" href="/assets/legacy.css">
+    <?php require __DIR__ . '/styles.php'; ?>
+    <link rel="stylesheet" href="/assets/legacy.css" type="text/css">
 </head>
 <body>
+    <div class="legacy-badge">
+        Orca IT classic view — optimised for older computers and browsers.
+        Call <a href="tel:<?= ORCA_PHONE_TEL ?>"><?= h(ORCA_PHONE_DISPLAY) ?></a>
+    </div>
+
     <div class="top-banner">
         Fast IT help for home &amp; business —
         <a href="/book">Book Orca IT today</a>
@@ -36,24 +42,19 @@ $navItems = array(
 
     <header class="site-header">
         <div class="container">
-            <table class="header-table" cellpadding="0" cellspacing="0" role="presentation">
+            <table width="100%" cellpadding="0" cellspacing="0" border="0">
                 <tr>
-                    <td class="header-logo">
+                    <td width="200" valign="middle">
                         <a href="/" aria-label="Orca IT home">
                             <img src="/assets/orca-logo.png" alt="ORCA IT" width="180" height="91">
                         </a>
                     </td>
-                    <td class="header-nav">
-                        <nav aria-label="Main navigation">
-                            <?php foreach ($navItems as $key => $item): ?>
-                                <a
-                                    class="nav-link<?= $activeNav === $key ? ' is-active' : '' ?>"
-                                    href="<?= h($item['href']) ?>"
-                                ><?= h($item['label']) ?></a>
-                            <?php endforeach; ?>
-                        </nav>
+                    <td valign="middle">
+                        <?php foreach ($navItems as $key => $item): ?>
+                            <a class="nav-link" href="<?= h($item['href']) ?>"><?= h($item['label']) ?></a>
+                        <?php endforeach; ?>
                     </td>
-                    <td class="header-cta">
+                    <td width="260" align="right" valign="middle" nowrap="nowrap">
                         <a class="phone-link" href="tel:<?= ORCA_PHONE_TEL ?>">Call <?= h(ORCA_PHONE_DISPLAY) ?></a>
                         <a class="btn btn-primary" href="/book">Book Online</a>
                     </td>

@@ -1,0 +1,31 @@
+# Use this ONLY if your VPS runs nginx on the host (outside Docker)
+# and proxies directly to containers. Add inside the orcait.com.au server block.
+
+map $http_user_agent $legacy_ua {
+    default 0;
+    ~*Chrome/                              0;
+    ~*Chromium/                             0;
+    ~*Edg/                                  0;
+    ~*Firefox/([0-9]|[1-6][0-9]|7[0-8])\.   1;
+    ~*Version/(4|5|6|7|8|9|10|11|12)\.      1;
+}
+
+map $arg_legacy $legacy_force {
+    default 0;
+    "1"     1;
+}
+
+map "$legacy_ua$legacy_force" $use_legacy {
+    default 0;
+    ~1      1;
+}
+
+# In location / { ... }:
+#   error_page 418 = @legacy_site;
+#   if ($use_legacy = 1) { return 418; }
+#   proxy_pass http://127.0.0.1:3000;   # or your Next.js container port
+#
+# location @legacy_site {
+#   proxy_pass http://127.0.0.1:8080;   # legacy PHP container port
+#   add_header X-Orca-Site "legacy-php" always;
+# }

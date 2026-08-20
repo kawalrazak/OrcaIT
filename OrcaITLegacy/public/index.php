@@ -30,35 +30,36 @@ require __DIR__ . '/../includes/header.php';
     <div class="hero-inner">
         <p class="eyebrow">No solution, no fee</p>
         <h1 class="hero-title">IT help that gets you back to life</h1>
-        <p class="hero-copy">
+        <p class="section-copy" style="color:#fff;">
             Friendly on-site and online support for homes and businesses —
             so you can stop stressing about tech and get on with your day.
         </p>
-        <div class="hero-actions">
+        <p>
             <a class="btn btn-primary" href="/book">Book Orca IT</a>
+            &nbsp;
             <a class="btn btn-secondary" href="tel:<?= ORCA_PHONE_TEL ?>">Call <?= h(ORCA_PHONE_DISPLAY) ?></a>
-        </div>
+        </p>
     </div>
 </section>
 
 <section class="section section-white">
     <div class="container">
-        <table class="promise-table" cellpadding="0" cellspacing="0" role="presentation">
+        <table width="100%" cellpadding="12" cellspacing="0" border="0">
             <tr>
-                <td>
-                    <span class="promise-icon">1</span>
-                    <h2 class="promise-title">We come to you</h2>
-                    <p class="promise-copy">On-site help at your home or workplace — simple and convenient.</p>
+                <td width="33%" align="center" valign="top">
+                    <p style="font-size:24px;font-weight:bold;color:#f42c1c;">1</p>
+                    <h2 class="section-title" style="font-size:16px;">We come to you</h2>
+                    <p class="section-copy">On-site help at your home or workplace — simple and convenient.</p>
                 </td>
-                <td>
-                    <span class="promise-icon">2</span>
-                    <h2 class="promise-title">Friendly support</h2>
-                    <p class="promise-copy">Clear help for both home and business, without the jargon.</p>
+                <td width="33%" align="center" valign="top">
+                    <p style="font-size:24px;font-weight:bold;color:#f42c1c;">2</p>
+                    <h2 class="section-title" style="font-size:16px;">Friendly support</h2>
+                    <p class="section-copy">Clear help for both home and business, without the jargon.</p>
                 </td>
-                <td>
-                    <span class="promise-icon">3</span>
-                    <h2 class="promise-title">No solution, no fee</h2>
-                    <p class="promise-copy">We work to find a fix. If we can&apos;t, you don&apos;t pay.</p>
+                <td width="33%" align="center" valign="top">
+                    <p style="font-size:24px;font-weight:bold;color:#f42c1c;">3</p>
+                    <h2 class="section-title" style="font-size:16px;">No solution, no fee</h2>
+                    <p class="section-copy">We work to find a fix. If we can&apos;t, you don&apos;t pay.</p>
                 </td>
             </tr>
         </table>
@@ -76,33 +77,49 @@ require __DIR__ . '/../includes/header.php';
             </p>
         <?php endif; ?>
 
-        <form class="contact-form" method="post" action="/#contact">
+        <form method="post" action="/#contact">
             <div class="hp-field">
                 <label for="website">Website</label>
                 <input type="text" id="website" name="website" tabindex="-1" autocomplete="off">
             </div>
 
-            <div class="form-row">
-                <label for="name">Name*</label>
-                <input type="text" id="name" name="name" required maxlength="200" value="<?= h(postedValue($posted, 'name')) ?>">
-            </div>
-            <div class="form-row">
-                <label for="email">Email*</label>
-                <input type="email" id="email" name="email" required maxlength="200" value="<?= h(postedValue($posted, 'email')) ?>">
-            </div>
-            <div class="form-row">
-                <label for="phone">Phone*</label>
-                <input type="tel" id="phone" name="phone" required maxlength="30" value="<?= h(postedValue($posted, 'phone')) ?>">
-            </div>
-            <div class="form-row">
-                <label for="suburb">Suburb*</label>
-                <input type="text" id="suburb" name="suburb" required maxlength="200" value="<?= h(postedValue($posted, 'suburb')) ?>">
-            </div>
-            <div class="form-row">
-                <label for="issue">How can we help?*</label>
-                <textarea id="issue" name="issue" required maxlength="1000"><?= h(postedValue($posted, 'issue')) ?></textarea>
-            </div>
-            <button class="btn btn-primary" type="submit">Submit</button>
+            <table class="form-table" cellpadding="0" cellspacing="0" border="0">
+                <tr>
+                    <td>
+                        <label for="name">Name *</label>
+                        <input type="text" id="name" name="name" required maxlength="200" value="<?= h(postedValue($posted, 'name')) ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="email">Email *</label>
+                        <input type="text" id="email" name="email" required maxlength="200" value="<?= h(postedValue($posted, 'email')) ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="phone">Phone *</label>
+                        <input type="text" id="phone" name="phone" required maxlength="30" value="<?= h(postedValue($posted, 'phone')) ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="suburb">Suburb *</label>
+                        <input type="text" id="suburb" name="suburb" required maxlength="200" value="<?= h(postedValue($posted, 'suburb')) ?>">
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <label for="issue">How can we help? *</label>
+                        <textarea id="issue" name="issue" required maxlength="1000"><?= h(postedValue($posted, 'issue')) ?></textarea>
+                    </td>
+                </tr>
+                <tr>
+                    <td>
+                        <button class="btn btn-primary" type="submit">Submit</button>
+                    </td>
+                </tr>
+            </table>
         </form>
     </div>
 </section>
