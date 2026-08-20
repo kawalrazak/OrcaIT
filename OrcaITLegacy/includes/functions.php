@@ -136,8 +136,43 @@ function processContactSubmission(array $post, string $source = 'legacy-contact'
     );
 
     forwardLeadToCrm(array_merge(array('source' => $source), $fields));
+    notifyStaffByEmail($fields, $source);
 
     return array('ok' => true, 'message' => 'Thanks — our team will be in touch shortly.');
+}
+
+function notifyStaffByEmail(array $fields, string $source): void
+{
+    $to = EMAIL_NOTIFY_TO;
+    $subject = 'New website enquiry — ' . $fields['name'];
+    $body = implode("\n", array(
+        'A new enquiry was submitted on the Orca IT website (classic/PHP view).',
+        '',
+        'Source: ' . $source,
+        'Name: ' . $fields['name'],
+        'Email: ' . $fields['email'],
+        'Phone: ' . $fields['phone'],
+        'Suburb: ' . $fields['suburb'],
+        'Support for: ' . $fields['supportFor'],
+        'Existing customer: ' . $fields['existingCustomer'],
+        'Preferred contact time: ' . $fields['preferredContactTime'],
+        '',
+        'Message: ' . $fields['issue'],
+        '',
+        'Also saved in CRM → Manage Leads.',
+    ));
+
+    $headers = implode("\r\n", array(
+        'From: Orca IT <' . ORCA_EMAIL . '>',
+        'Reply-To: ' . $fields['email'],
+        'Content-Type: text/plain; charset=UTF-8',
+        'X-Mailer: OrcaIT-Legacy',
+    ));
+
+    $sent = @mail($to, $subject, $body, $headers);
+    if (!$sent) {
+        error_log('[staff-email] mail() failed for ' . $fields['email']);
+    }
 }
 
 function homeSupportServices(): array

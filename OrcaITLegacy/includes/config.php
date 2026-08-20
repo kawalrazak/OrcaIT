@@ -10,6 +10,9 @@ const ORCA_SITE_URL = 'https://orcait.com.au';
 $crmInternalUrl = getenv('CRM_INTERNAL_URL') ?: 'http://crm:3001';
 define('CRM_INTERNAL_URL', rtrim($crmInternalUrl, '/'));
 
+$notifyEmail = getenv('EMAIL_NOTIFY_TO') ?: ORCA_EMAIL;
+define('EMAIL_NOTIFY_TO', $notifyEmail);
+
 $dataDirectory = __DIR__ . '/../data';
 if (!is_dir($dataDirectory)) {
     mkdir($dataDirectory, 0755, true);
