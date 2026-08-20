@@ -5,6 +5,7 @@ import {
   ChevronUp,
   ChevronDown,
   SquarePen,
+  Trash2,
 } from 'lucide-react';
 import Breadcrumbs from '../components/Breadcrumbs';
 import DateInput from '../components/DateInput';
@@ -364,9 +365,10 @@ export default function ManageLeadsPage() {
 
 function LeadRow({ lead, index }: { lead: Lead; index: number }) {
   const { getAccountById, technicianAccounts } = useAccounts();
-  const { updateLead } = useLeads();
+  const { updateLead, deleteLead } = useLeads();
   const { user } = useAuth();
   const canEdit = hasPermission(user?.permissions, 'editLeads', user?.role);
+  const canDelete = hasPermission(user?.permissions, 'deleteLeads', user?.role);
   const canAssign = hasPermission(user?.permissions, 'assignTechnicians', user?.role);
   const [modalOpen, setModalOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -522,7 +524,7 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
                 {technicianSent ? 'Sent' : 'Technician'}
               </button>
             </div>
-            <div className="flex items-start justify-center px-1.5 pt-0.5">
+            <div className="flex items-start justify-center gap-1 px-1.5 pt-0.5">
               {canEdit && (
                 <button
                   type="button"
@@ -531,6 +533,20 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
                   className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-sky-400 text-white shadow-sm transition-colors hover:bg-sky-500"
                 >
                   <SquarePen size={10} />
+                </button>
+              )}
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm(`Delete lead for "${lead.name}"? This cannot be undone.`)) {
+                      deleteLead(lead.id);
+                    }
+                  }}
+                  title="Delete lead"
+                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-red-500 text-white shadow-sm transition-colors hover:bg-red-600"
+                >
+                  <Trash2 size={10} />
                 </button>
               )}
             </div>
