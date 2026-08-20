@@ -13,6 +13,9 @@ function getSmtpConfig() {
   const from = process.env.EMAIL_FROM || ORCA_EMAIL;
   const notifyTo = process.env.EMAIL_NOTIFY_TO || ORCA_EMAIL;
 
+  // Strip optional surrounding quotes from .env values
+  const clean = (value: string) => value.replace(/^["']|["']$/g, "");
+
   const hasPlaceholderConfig =
     host === "smtp.example.com" ||
     user === "your-smtp-username" ||
@@ -23,13 +26,13 @@ function getSmtpConfig() {
   }
 
   return {
-    host,
+    host: clean(host),
     port: Number(process.env.SMTP_PORT || 587),
     secure: process.env.SMTP_SECURE === "true",
-    user,
-    pass,
-    from,
-    notifyTo,
+    user: clean(user),
+    pass: clean(pass),
+    from: clean(from),
+    notifyTo: clean(notifyTo),
   };
 }
 

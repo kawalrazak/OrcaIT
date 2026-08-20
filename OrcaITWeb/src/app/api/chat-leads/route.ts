@@ -46,14 +46,26 @@ function isValidLead(value: unknown): value is Lead {
 }
 
 async function sendStaffLeadEmail(lead: Lead, source: string) {
-  return sendMail({
+  const sourceLabel =
+    source === "chat"
+      ? "Website chat"
+      : source === "booking-form"
+        ? "Booking form"
+        : "Website enquiry";
+
+  const subject =
+    source === "chat"
+      ? `New chat enquiry — ${lead.name}`
+      : `New website enquiry — ${lead.name}`;
+
+  const result = await sendMail({
     to: getNotifyEmail(),
     replyTo: lead.email,
-    subject: `New website enquiry — ${lead.name}`,
+    subject,
     text: [
-      "A new enquiry was submitted on the Orca IT website.",
+      `A new ${sourceLabel.toLowerCase()} enquiry was submitted on the Orca IT website.`,
       "",
-      `Source: ${source}`,
+      `Source: ${sourceLabel}`,
       `Name: ${lead.name}`,
       `Email: ${lead.email}`,
       `Phone: ${lead.phone}`,
@@ -68,9 +80,9 @@ async function sendStaffLeadEmail(lead: Lead, source: string) {
     ].join("\n"),
     html: `
       <div style="font-family:Arial,sans-serif;line-height:1.6;color:#0c58ac">
-        <h2 style="color:#f42c1c">New website enquiry</h2>
+        <h2 style="color:#f42c1c">${subject}</h2>
         <table style="border-collapse:collapse;width:100%;max-width:560px">
-          <tr><td style="padding:6px 0;font-weight:bold">Source</td><td>${source}</td></tr>
+          <tr><td style="padding:6px 0;font-weight:bold">Source</td><td>${sourceLabel}</td></tr>
           <tr><td style="padding:6px 0;font-weight:bold">Name</td><td>${lead.name}</td></tr>
           <tr><td style="padding:6px 0;font-weight:bold">Email</td><td><a href="mailto:${lead.email}">${lead.email}</a></td></tr>
           <tr><td style="padding:6px 0;font-weight:bold">Phone</td><td><a href="tel:${lead.phone}">${lead.phone}</a></td></tr>
@@ -84,6 +96,12 @@ async function sendStaffLeadEmail(lead: Lead, source: string) {
       </div>
     `,
   });
+
+  if (!result.sent) {
+    console.error("[chat-leads] staff email not sent:", result.reason);
+  }
+
+  return result;
 }
 
 export async function POST(request: Request) {
