@@ -6,38 +6,38 @@ export type MailResult = {
   reason: string | null;
 };
 
-function getSmtpConfig() {
-  const host = process.env.SMTP_HOST;
-  const user = process.env.SMTP_USER;
-  const pass = process.env.SMTP_PASS;
-  const from = process.env.EMAIL_FROM || ORCA_EMAIL;
-  const notifyTo = process.env.EMAIL_NOTIFY_TO || ORCA_EMAIL;
+function cleanEnv(value: string | undefined) {
+  if (!value) return "";
+  return value.trim().replace(/^["']|["']$/g, "");
+}
 
-  // Strip optional surrounding quotes from .env values
-  const clean = (value: string) => value.replace(/^["']|["']$/g, "");
+function getSmtpConfig() {
+  const host = cleanEnv(process.env.SMTP_HOST);
+  const user = cleanEnv(process.env.SMTP_USER);
+  const pass = cleanEnv(process.env.SMTP_PASS);
+  const from = cleanEnv(process.env.EMAIL_FROM) || ORCA_EMAIL;
+  const notifyTo = cleanEnv(process.env.EMAIL_NOTIFY_TO) || ORCA_EMAIL;
+  const port = Number(cleanEnv(process.env.SMTP_PORT) || "587");
+  const secure =
+    cleanEnv(process.env.SMTP_SECURE).toLowerCase() === "true" || port === 465;
 
   const hasPlaceholderConfig =
+    !host ||
+    !user ||
+    !pass ||
     host === "smtp.example.com" ||
     user === "your-smtp-username" ||
     pass === "your-smtp-password";
 
-  if (!host || !user || !pass || hasPlaceholderConfig) {
+  if (hasPlaceholderConfig) {
     return null;
   }
 
-  return {
-    host: clean(host),
-    port: Number(process.env.SMTP_PORT || 587),
-    secure: process.env.SMTP_SECURE === "true",
-    user: clean(user),
-    pass: clean(pass),
-    from: clean(from),
-    notifyTo: clean(notifyTo),
-  };
+  return { host, port, secure, user, pass, from, notifyTo };
 }
 
 export function getNotifyEmail() {
-  return process.env.EMAIL_NOTIFY_TO || ORCA_EMAIL;
+  return cleanEnv(process.env.EMAIL_NOTIFY_TO) || ORCA_EMAIL;
 }
 
 export async function sendMail(options: {
@@ -61,7 +61,18 @@ export async function sendMail(options: {
       host: config.host,
       port: config.port,
       secure: config.secure,
-      auth: { user: config.user, pass: config.pass },
+      auth: {
+        user: config.user,
+        pass: config.pass,
+      },
+      // Helps with some Hostinger / Windows TLS handshakes
+      tls: {
+        minVersion: "TLSv1.2",
+        rejectUnauthorized: true,
+      },
+      connectionTimeout: 20000,
+      greetingTimeout: 20000,
+      socketTimeout: 20000,
     });
 
     await transporter.sendMail({
@@ -75,10 +86,12 @@ export async function sendMail(options: {
 
     return { sent: true, reason: null };
   } catch (error) {
-    console.error("[mail] send failed:", error);
+    const err = error as { code?: string; responseCode?: number; message?: string };
+    const detail = [err.code, err.responseCode, err.message].filter(Boolean).join(" — ");
+    console.error("[mail] send failed:", detail);
     return {
       sent: false,
-      reason: "Email could not be sent. Submission was saved successfully.",
+      reason: `Email could not be sent (${err.code || "SMTP_ERROR"}). Submission was saved successfully.`,
     };
   }
 }
