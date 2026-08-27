@@ -25,11 +25,27 @@ services:
     expose:
       - "3001"
 
+  facebook-bot:
+    build:
+      context: ./FacebookChatbot
+    env_file:
+      - ./FacebookChatbot/.env
+    environment:
+      CRM_INTERNAL_URL: http://crm:3001
+    volumes:
+      - facebook_bot_data:/app/data
+    restart: unless-stopped
+    expose:
+      - "3002"
+    depends_on:
+      - crm
+
   nginx:
     image: nginx:1.27-alpine
     depends_on:
       - web
       - crm
+      - facebook-bot
     ports:
       - "80:80"
       - "443:443"                  # enable once TLS certs are mounted below
@@ -41,3 +57,4 @@ services:
 volumes:
   orca_data:
   crm_data:
+  facebook_bot_data:

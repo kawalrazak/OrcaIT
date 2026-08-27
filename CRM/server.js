@@ -150,7 +150,12 @@ function buildLeadFromWebsite(body = {}) {
 
   return {
     id: randomUUID(),
-    webSource: source === 'booking-form' ? 'booking-form' : 'chat',
+    webSource:
+      source === 'booking-form'
+        ? 'booking-form'
+        : source === 'facebook'
+          ? 'facebook'
+          : 'chat',
     submittedAt: now.toISOString(),
     name,
     phone: asString(body.phone),
@@ -160,7 +165,13 @@ function buildLeadFromWebsite(body = {}) {
     issueDescription: issue || 'Website enquiry',
     address: suburb || undefined,
     comment: [
-      `Source: Website ${source === 'booking-form' ? 'callback form' : 'chat'}`,
+      `Source: ${
+        source === 'facebook'
+          ? 'Facebook Messenger'
+          : source === 'booking-form'
+            ? 'Website callback form'
+            : 'Website chat'
+      }`,
       supportFor && `Support for: ${supportFor}`,
       existingCustomer && `Existing customer: ${existingCustomer}`,
       preferredContactTime && `Preferred contact: ${preferredContactTime}`,

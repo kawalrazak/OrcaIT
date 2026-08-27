@@ -2,11 +2,12 @@
 
 Two apps deployed together behind one nginx reverse proxy, for a single EC2 instance.
 
-| App          | Folder       | Stack                                | Internal port |
-| ------------ | ------------ | ------------------------------------ | ------------- |
-| Marketing    | `OrcaITWeb/` | Next.js 16 (standalone output)       | 3000          |
-| CRM          | `CRM/`       | Vite SPA + Express API (Twilio SMS)  | 3001          |
-| Reverse proxy| `nginx/`     | nginx 1.27                           | 80 (public)   |
+| App          | Folder              | Stack                                | Internal port |
+| ------------ | ------------------- | ------------------------------------ | ------------- |
+| Marketing    | `OrcaITWeb/`        | Next.js 16 (standalone output)       | 3000          |
+| CRM          | `CRM/`              | Vite SPA + Express API (Twilio SMS)  | 3001          |
+| Facebook bot | `FacebookChatbot/`  | Express Messenger webhook            | 3002          |
+| Reverse proxy| `nginx/`            | nginx 1.27                           | 80 (public)   |
 
 ```
 CRM-Site/
@@ -92,6 +93,9 @@ docker compose restart nginx
 Edit the two env files (never commit them):
 
 - `OrcaITWeb/.env` — SMTP settings for booking-confirmation emails.
+- `FacebookChatbot/.env` — Messenger tokens (`FACEBOOK_VERIFY_TOKEN`,
+  `FACEBOOK_PAGE_ACCESS_TOKEN`, `FACEBOOK_APP_SECRET`, `FACEBOOK_PAGE_ID`).
+  Webhook URL: `https://orcait.com.au/facebook-webhook/webhook`
 - `CRM/.env` — `PORT`, `NODE_ENV=production`, and Twilio credentials.
   Set `TWILIO_MOCK_MODE=true` to simulate SMS without real Twilio keys.
 
