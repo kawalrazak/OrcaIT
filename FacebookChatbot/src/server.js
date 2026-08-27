@@ -153,12 +153,26 @@ app.get("/webhook", (req, res) => {
 
 app.post("/webhook", async (req, res) => {
   if (!signatureIsValid(req)) {
+    console.error("[facebook] webhook signature invalid — check FACEBOOK_APP_SECRET");
     return res.sendStatus(403);
   }
 
   res.sendStatus(200);
 
   const body = req.body;
+  console.log("[facebook] webhook POST", JSON.stringify({
+    object: body?.object,
+    entries: (body?.entry || []).map((entry) => ({
+      id: entry.id,
+      messagingCount: (entry.messaging || []).length,
+      texts: (entry.messaging || []).map((event) => ({
+        sender: event.sender?.id,
+        text: event.message?.text || event.postback?.payload || null,
+        isEcho: Boolean(event.message?.is_echo),
+      })),
+    })),
+  }));
+
   if (body.object !== "page") return;
 
   const allowedPageId = process.env.FACEBOOK_PAGE_ID || "1208194479052501";
