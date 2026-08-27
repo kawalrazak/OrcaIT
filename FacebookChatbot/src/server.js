@@ -44,17 +44,28 @@ function getSession(psid) {
 }
 
 function signatureIsValid(req) {
-  const secret = process.env.FACEBOOK_APP_SECRET;
+  const secret = (process.env.FACEBOOK_APP_SECRET || "").trim();
   if (!secret) return true;
 
   const header = req.get("X-Hub-Signature-256");
-  if (!header?.startsWith("sha256=")) return false;
+  if (!header?.startsWith("sha256=")) {
+    console.error("[facebook] missing X-Hub-Signature-256 header");
+    return false;
+  }
+
+  if (!req.rawBody || !Buffer.isBuffer(req.rawBody)) {
+    console.error("[facebook] raw body missing for signature check");
+    return false;
+  }
 
   const expected = crypto.createHmac("sha256", secret).update(req.rawBody).digest("hex");
-  const provided = header.slice("sha256=".length);
+  const provided = header.slice("sha256=".length).trim();
 
   try {
-    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(provided));
+    const expectedBuf = Buffer.from(expected, "utf8");
+    const providedBuf = Buffer.from(provided, "utf8");
+    if (expectedBuf.length !== providedBuf.length) return false;
+    return crypto.timingSafeEqual(expectedBuf, providedBuf);
   } catch {
     return false;
   }
