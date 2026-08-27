@@ -45,7 +45,6 @@ services:
     depends_on:
       - web
       - crm
-      - facebook-bot
     ports:
       - "80:80"
       - "443:443"                  # enable once TLS certs are mounted below
