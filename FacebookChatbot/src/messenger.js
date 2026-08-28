@@ -1,6 +1,6 @@
 const GRAPH_URL = "https://graph.facebook.com/v21.0/me/messages";
 
-const REPLY_DELAY_MS = Number(process.env.REPLY_DELAY_MS || 7000);
+const REPLY_DELAY_MS = Number(process.env.REPLY_DELAY_MS || 5000);
 const BETWEEN_MESSAGES_MS = Number(process.env.BETWEEN_MESSAGES_MS || 1800);
 
 function sleep(ms) {
