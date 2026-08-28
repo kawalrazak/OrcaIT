@@ -4,7 +4,12 @@ import dotenv from "dotenv";
 import {
   bookingQuestions,
   emptyLead,
+  existingBookingReply,
+  followUpChoicePrompt,
+  followUpQuickReplies,
   generalReply,
+  isExistingBookingChoice,
+  isNewBookingChoice,
   isQuickQuestion,
   normaliseField,
   quickQuestions,
@@ -41,6 +46,8 @@ function getSession(psid) {
     bookingStep: null,
     lead: { ...emptyLead },
     greeted: false,
+    lastCompletedLead: null,
+    followUpStep: null,
     updatedAt: Date.now(),
   };
   sessions.set(psid, session);
@@ -78,6 +85,8 @@ function signatureIsValid(req) {
 async function startBooking(psid, session) {
   session.lead = { ...emptyLead };
   session.bookingStep = 0;
+  session.followUpStep = null;
+  session.lastCompletedLead = null;
   const first = bookingQuestions[0];
   await sendTexts(
     psid,
@@ -87,6 +96,30 @@ async function startBooking(psid, session) {
       first.prompt,
     ],
     first.quickReplies || [],
+  );
+}
+
+async function askFollowUpChoice(psid, session) {
+  session.followUpStep = "awaiting_choice";
+  await sendText(psid, followUpChoicePrompt(session.lastCompletedLead), followUpQuickReplies);
+}
+
+async function handleFollowUpChoice(psid, session, answer) {
+  if (isExistingBookingChoice(answer)) {
+    await sendText(psid, existingBookingReply(session.lastCompletedLead));
+    session.followUpStep = "done";
+    return;
+  }
+
+  if (isNewBookingChoice(answer)) {
+    await startBooking(psid, session);
+    return;
+  }
+
+  await sendText(
+    psid,
+    'Please choose "Recent booking" if this is about your last appointment, or "New booking" to start again.',
+    followUpQuickReplies,
   );
 }
 
@@ -103,6 +136,21 @@ async function handleMessage(psid, text) {
   const session = getSession(psid);
   const answer = text.trim();
   if (!answer) return;
+
+  if (session.bookingStep === null && session.followUpStep === "awaiting_choice") {
+    await handleFollowUpChoice(psid, session, answer);
+    return;
+  }
+
+  if (session.bookingStep === null && session.lastCompletedLead && session.followUpStep !== "done") {
+    if (isNewBookingChoice(answer) || answer === "Book an appointment") {
+      await startBooking(psid, session);
+      return;
+    }
+
+    await askFollowUpChoice(psid, session);
+    return;
+  }
 
   if (session.bookingStep === null) {
     if (!session.greeted) {
@@ -157,6 +205,8 @@ async function handleMessage(psid, text) {
 
   try {
     await saveLead(session.lead);
+    session.lastCompletedLead = { ...session.lead };
+    session.followUpStep = null;
     await sendText(
       psid,
       `Thank you, ${session.lead.name}. Your details have been saved and the Orca IT team will contact you on ${session.lead.phone}.`,

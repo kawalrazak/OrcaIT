@@ -101,6 +101,52 @@ export function isQuickQuestion(message) {
   return quickQuestions.some((question) => question.toLowerCase() === message.trim().toLowerCase());
 }
 
+export function followUpChoicePrompt(lead) {
+  const issue = lead.issue?.trim() || "your enquiry";
+  const when = lead.preferredContactTime?.trim();
+  const whenText = when ? ` (${when})` : "";
+  return `Hi again! Are you getting in touch about your recent booking for "${issue}"${whenText}, or would you like to make a new appointment?`;
+}
+
+export const followUpQuickReplies = ["Recent booking", "New booking"];
+
+export function isExistingBookingChoice(message) {
+  const text = message.trim().toLowerCase();
+  return (
+    text === "recent booking" ||
+    text.includes("recent") ||
+    text.includes("existing") ||
+    text.includes("old booking") ||
+    text.includes("same booking") ||
+    text.includes("follow up") ||
+    text.includes("follow-up") ||
+    text === "existing appointment" ||
+    text === "my booking"
+  );
+}
+
+export function isNewBookingChoice(message) {
+  const text = message.trim().toLowerCase();
+  return (
+    text === "new booking" ||
+    text.includes("new appointment") ||
+    text.includes("another booking") ||
+    text.includes("book again") ||
+    text.includes("book") ||
+    text.includes("appointment")
+  );
+}
+
+export function existingBookingReply(lead) {
+  const name = lead.name?.trim() || "there";
+  const issue = lead.issue?.trim() || "your enquiry";
+  const phone = lead.phone?.trim() || ORCA_PHONE_DISPLAY;
+  const when = lead.preferredContactTime?.trim();
+  const whenLine = when ? ` at your preferred time (${when})` : "";
+
+  return `Thanks ${name}. I can see your recent booking about ${issue}. Our team will contact you on ${phone}${whenLine}. If you need urgent help, call ${ORCA_PHONE_DISPLAY}.`;
+}
+
 export function validationError(field, value) {
   if (!value.trim()) return "Please enter a response so I can continue.";
   if (field === "phone" && !/^[+()\d\s-]{8,20}$/.test(value.trim())) {
