@@ -12,11 +12,14 @@ import {
   followUpChoicePrompt,
   followUpQuickReplies,
   generalReply,
+  isAskingAboutAppointment,
   isExistingBookingChoice,
   isNewBookingChoice,
   isQuickQuestion,
   normaliseField,
   quickQuestions,
+  returningUserGreeting,
+  returningUserPrompt,
   validationError,
   wantsBooking,
   welcomeFollowUp,
@@ -25,12 +28,13 @@ import {
 } from "./conversation.js";
 import { sendText, sendTexts } from "./messenger.js";
 import { saveLead } from "./save-lead.js";
+import { getSavedBooking, saveUserBooking } from "./user-bookings.js";
 
 dotenv.config();
 
 const app = express();
 const sessions = new Map();
-const SESSION_TTL_MS = 1000 * 60 * 60 * 6;
+const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 
 app.use(
   express.json({
@@ -40,18 +44,22 @@ app.use(
   }),
 );
 
-function getSession(psid) {
+async function ensureSession(psid) {
   const existing = sessions.get(psid);
   if (existing && Date.now() - existing.updatedAt < SESSION_TTL_MS) {
     existing.updatedAt = Date.now();
+    if (!existing.lastCompletedLead) {
+      existing.lastCompletedLead = await getSavedBooking(psid);
+    }
     return existing;
   }
 
+  const persistedLead = await getSavedBooking(psid);
   const session = {
     bookingStep: null,
     lead: { ...emptyLead },
     greeted: false,
-    lastCompletedLead: null,
+    lastCompletedLead: persistedLead,
     followUpStep: null,
     updatedAt: Date.now(),
   };
@@ -65,7 +73,7 @@ function signatureIsValid(req) {
 
   const header = req.get("X-Hub-Signature-256");
   if (!header?.startsWith("sha256=")) {
-    console.error("[facebook] missing X-Hub-Signature-256 header");
+    console.error("[facebook] missing X-Hub-Signature-256");
     return false;
   }
 
@@ -91,7 +99,6 @@ async function startBooking(psid, session) {
   session.lead = { ...emptyLead };
   session.bookingStep = 0;
   session.followUpStep = null;
-  session.lastCompletedLead = null;
   const first = bookingQuestions[0];
   await sendTexts(
     psid,
@@ -100,14 +107,9 @@ async function startBooking(psid, session) {
   );
 }
 
-async function askFollowUpChoice(psid, session) {
-  session.followUpStep = "awaiting_choice";
-  await sendText(psid, followUpChoicePrompt(session.lastCompletedLead), followUpQuickReplies);
-}
-
 async function handleFollowUpChoice(psid, session, answer) {
-  if (isExistingBookingChoice(answer)) {
-    await sendText(psid, existingBookingReply(session.lastCompletedLead));
+  if (isExistingBookingChoice(answer) || isAskingAboutAppointment(answer)) {
+    await sendText(psid, existingBookingReply(session.lastCompletedLead), followUpQuickReplies);
     session.followUpStep = "done";
     return;
   }
@@ -119,14 +121,74 @@ async function handleFollowUpChoice(psid, session, answer) {
 
   await sendText(
     psid,
-    'Please choose "Recent booking" if this is about your last appointment, or "New booking" to start again.',
+    'Please choose "Recent booking" for an update on your appointment, or "New booking" to start again.',
     followUpQuickReplies,
   );
 }
 
+async function handleReturningUser(psid, session, answer) {
+  const lead = session.lastCompletedLead;
+  if (!lead || session.bookingStep !== null) return false;
+
+  if (session.followUpStep === "awaiting_choice") {
+    await handleFollowUpChoice(psid, session, answer);
+    return true;
+  }
+
+  if (isNewBookingChoice(answer) && answer !== "Recent booking") {
+    await startBooking(psid, session);
+    return true;
+  }
+
+  if (isExistingBookingChoice(answer) || isAskingAboutAppointment(answer)) {
+    await sendText(psid, existingBookingReply(lead), followUpQuickReplies);
+    session.followUpStep = "done";
+    return true;
+  }
+
+  if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/i.test(answer)) {
+    await sendTexts(
+      psid,
+      [returningUserGreeting(lead), existingBookingReply(lead), returningUserPrompt(lead)],
+      followUpQuickReplies,
+    );
+    session.followUpStep = "awaiting_choice";
+    session.greeted = true;
+    return true;
+  }
+
+  if (answer.toLowerCase().includes("thank")) {
+    await sendTexts(
+      psid,
+      [
+        "You’re very welcome!",
+        existingBookingReply(lead),
+        "Reply Recent booking if you need anything else about that appointment.",
+      ],
+      followUpQuickReplies,
+    );
+    session.followUpStep = "awaiting_choice";
+    return true;
+  }
+
+  if (isQuickQuestion(answer)) {
+    await sendTexts(
+      psid,
+      [generalReply(answer), returningUserPrompt(lead)],
+      followUpQuickReplies,
+    );
+    session.followUpStep = "awaiting_choice";
+    return true;
+  }
+
+  await sendTexts(psid, [followUpChoicePrompt(lead)], followUpQuickReplies);
+  session.followUpStep = "awaiting_choice";
+  return true;
+}
+
 async function replyToGeneral(psid, answer) {
   if (answer === "Book an appointment") {
-    await startBooking(psid, getSession(psid));
+    await startBooking(psid, ensureSession(psid));
     return;
   }
 
@@ -134,89 +196,80 @@ async function replyToGeneral(psid, answer) {
 }
 
 async function handleMessage(psid, text) {
-  const session = getSession(psid);
+  const session = await ensureSession(psid);
   const answer = text.trim();
   if (!answer) return;
 
-  if (session.bookingStep === null && session.followUpStep === "awaiting_choice") {
-    await handleFollowUpChoice(psid, session, answer);
-    return;
-  }
-
-  if (session.bookingStep === null && session.lastCompletedLead && session.followUpStep !== "done") {
-    if (isNewBookingChoice(answer) || answer === "Book an appointment") {
-      await startBooking(psid, session);
+  if (session.bookingStep !== null) {
+    const question = bookingQuestions[session.bookingStep];
+    const error = validationError(question.field, answer);
+    if (error) {
+      await sendText(psid, error, question.quickReplies || []);
       return;
     }
 
-    await askFollowUpChoice(psid, session);
-    return;
-  }
+    session.lead[question.field] = normaliseField(question.field, answer);
+    const nextStep = session.bookingStep + 1;
 
-  if (session.bookingStep === null) {
-    if (!session.greeted) {
-      session.greeted = true;
-      if (!wantsBooking(answer) && !isQuickQuestion(answer)) {
-        await sendTexts(
-          psid,
-          [welcomeGreeting(), welcomeFollowUp(), generalReply(answer)],
-          quickQuestions,
-        );
-        return;
-      }
-    }
-
-    if (wantsBooking(answer) || answer === "Book an appointment") {
-      await startBooking(psid, session);
+    if (nextStep < bookingQuestions.length) {
+      session.bookingStep = nextStep;
+      const next = bookingQuestions[nextStep];
+      const ack = bookingAcknowledgement(question.field, session.lead[question.field]);
+      await sendTexts(psid, [ack, next.prompt], next.quickReplies || []);
       return;
     }
 
-    if (isQuickQuestion(answer)) {
-      await replyToGeneral(psid, answer);
-      return;
+    try {
+      await saveLead(session.lead);
+      const completedLead = { ...session.lead };
+      session.lastCompletedLead = completedLead;
+      session.followUpStep = null;
+      await saveUserBooking(psid, completedLead);
+      await sendText(psid, bookingCompleteMessage(completedLead));
+    } catch (error) {
+      console.error("[facebook] save lead failed:", error);
+      await sendText(
+        psid,
+        `I couldn’t save your details. Please call ${ORCA_PHONE_DISPLAY} and we’ll help you book.`,
+      );
     }
 
-    await sendTexts(
-      psid,
-      [generalReply(answer), "If you’d like, I can help you book an appointment — just say book."],
-      quickQuestions,
-    );
+    session.bookingStep = null;
+    session.lead = { ...emptyLead };
     return;
   }
 
-  const question = bookingQuestions[session.bookingStep];
-  const error = validationError(question.field, answer);
-  if (error) {
-    await sendText(psid, error, question.quickReplies || []);
+  if (await handleReturningUser(psid, session, answer)) {
     return;
   }
 
-  session.lead[question.field] = normaliseField(question.field, answer);
-  const nextStep = session.bookingStep + 1;
+  if (!session.greeted) {
+    session.greeted = true;
+    if (!wantsBooking(answer) && !isQuickQuestion(answer)) {
+      await sendTexts(
+        psid,
+        [welcomeGreeting(), welcomeFollowUp(), generalReply(answer)],
+        quickQuestions,
+      );
+      return;
+    }
+  }
 
-  if (nextStep < bookingQuestions.length) {
-    session.bookingStep = nextStep;
-    const next = bookingQuestions[nextStep];
-    const ack = bookingAcknowledgement(question.field, session.lead[question.field]);
-    await sendTexts(psid, [ack, next.prompt], next.quickReplies || []);
+  if (wantsBooking(answer) || answer === "Book an appointment") {
+    await startBooking(psid, session);
     return;
   }
 
-  try {
-    await saveLead(session.lead);
-    session.lastCompletedLead = { ...session.lead };
-    session.followUpStep = null;
-    await sendText(psid, bookingCompleteMessage(session.lead));
-  } catch (error) {
-    console.error("[facebook] save lead failed:", error);
-    await sendText(
-      psid,
-      `I couldn’t save your details. Please call ${ORCA_PHONE_DISPLAY} and we’ll help you book.`,
-    );
+  if (isQuickQuestion(answer)) {
+    await replyToGeneral(psid, answer);
+    return;
   }
 
-  session.bookingStep = null;
-  session.lead = { ...emptyLead };
+  await sendTexts(
+    psid,
+    [generalReply(answer), "If you’d like, I can help you book an appointment — just say book."],
+    quickQuestions,
+  );
 }
 
 app.get("/health", (_req, res) => {
@@ -250,28 +303,12 @@ app.post("/webhook", async (req, res) => {
   res.sendStatus(200);
 
   const body = req.body;
-  console.log("[facebook] webhook POST", JSON.stringify({
-    object: body?.object,
-    entries: (body?.entry || []).map((entry) => ({
-      id: entry.id,
-      messagingCount: (entry.messaging || []).length,
-      texts: (entry.messaging || []).map((event) => ({
-        sender: event.sender?.id,
-        text: event.message?.text || event.postback?.payload || null,
-        isEcho: Boolean(event.message?.is_echo),
-      })),
-    })),
-  }));
-
   if (body.object !== "page") return;
 
   const allowedPageId = process.env.FACEBOOK_PAGE_ID || "1208194479052501";
 
   for (const entry of body.entry || []) {
-    if (String(entry.id) !== String(allowedPageId)) {
-      console.warn("[facebook] ignored event for other page:", entry.id);
-      continue;
-    }
+    if (String(entry.id) !== String(allowedPageId)) continue;
 
     for (const event of entry.messaging || []) {
       const psid = event.sender?.id;

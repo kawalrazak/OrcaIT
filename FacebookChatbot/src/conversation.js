@@ -195,7 +195,46 @@ export function followUpChoicePrompt(lead) {
 
 export const followUpQuickReplies = ["Recent booking", "New booking"];
 
-export function isExistingBookingChoice(message) {
+export function isAskingAboutAppointment(message) {
+  const text = message.trim().toLowerCase();
+
+  if (wantsBooking(message) && !text.includes("my ")) {
+    return false;
+  }
+
+  return (
+    text.includes("my appointment") ||
+    text.includes("my booking") ||
+    text.includes("when will") ||
+    text.includes("when are you") ||
+    text.includes("when do you") ||
+    text.includes("will you call") ||
+    text.includes("will someone call") ||
+    text.includes("appointment status") ||
+    text.includes("already booked") ||
+    text.includes("already submitted") ||
+    text.includes("follow up") ||
+    text.includes("follow-up") ||
+    text.includes("recent booking") ||
+    text.includes("update on") ||
+    text.includes("status of") ||
+    (text.includes("appointment") && (text.includes("?") || text.includes("my") || text.includes("about")))
+  );
+}
+
+export function returningUserGreeting(lead) {
+  const firstName = lead.name?.trim().split(/\s+/)[0] || "there";
+  return pickOne([
+    `Welcome back, ${firstName}!`,
+    `Hi again, ${firstName}!`,
+    `Good to hear from you again, ${firstName}.`,
+  ]);
+}
+
+export function returningUserPrompt(lead) {
+  const issue = lead.issue?.trim() || "your enquiry";
+  return `I can see your booking about ${issue}. Would you like an update on that, or make a new appointment?`;
+}
   const text = message.trim().toLowerCase();
   return (
     text === "recent booking" ||
