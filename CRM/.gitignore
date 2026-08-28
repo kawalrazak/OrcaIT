@@ -8,6 +8,11 @@ dist-ssr
 *.local
 .env
 
+# Local lead database exports (persisted on VPS via Docker volume)
+data/leads.db
+data/leads.db-*
+data/leads.csv
+
 # Editor
 .vscode/*
 !.vscode/extensions.json

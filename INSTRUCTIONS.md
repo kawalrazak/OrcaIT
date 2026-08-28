@@ -150,14 +150,19 @@ docker compose down               # stop everything (volumes preserved)
 docker compose up -d --build web  # rebuild + redeploy after a code change
 ```
 
-**Data persistence:** the marketing site writes lead/booking CSVs to `/app/data`,
-backed by the named Docker volume `orca_data` (survives rebuilds and `down`).
-Back it up with:
+**Data persistence:** CRM leads are stored in SQLite at `/app/data/leads.db` and
+exported to `/app/data/leads.csv` (every new booking is appended; edits refresh the CSV).
+The Docker volume `crm_data` keeps both files across rebuilds. Existing
+`website-leads.json` entries are imported into SQLite automatically on first startup.
+
+Website chat CSVs in `/app/data` on the marketing container use volume `orca_data`.
+Facebook bot session data is in-memory only; completed bookings go to CRM.
+Back up CRM data with:
 ```bash
-docker run --rm -v crm-site_orca_data:/data -v "$PWD":/backup alpine \
-  tar czf /backup/orca_data-backup.tar.gz -C /data .
+docker run --rm -v crm-site_crm_data:/data -v "$PWD":/backup alpine \
+  tar czf /backup/crm_data-backup.tar.gz -C /data .
 ```
-(The volume name is prefixed with the project directory, e.g. `crm-site_orca_data`;
+(The volume name is prefixed with the project directory, e.g. `crm-site_crm_data`;
 confirm with `docker volume ls`.)
 
 ---

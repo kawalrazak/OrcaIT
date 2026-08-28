@@ -2,17 +2,17 @@ import express from 'express';
 import dotenv from 'dotenv';
 import path from 'path';
 import { existsSync } from 'fs';
-import { mkdir, readFile, writeFile } from 'fs/promises';
 import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import twilio from 'twilio';
+import { createLeadsStore } from './leads-db.js';
 
 dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distPath = path.join(__dirname, 'dist');
 const dataDir = path.join(__dirname, 'data');
-const leadsFile = path.join(dataDir, 'website-leads.json');
+const leadsStore = createLeadsStore({ dataDir });
 const isProduction =
   process.env.NODE_ENV === 'production' ||
   (process.env.NODE_ENV !== 'development' && existsSync(path.join(distPath, 'index.html')));
@@ -28,13 +28,6 @@ app.use((req, res, next) => {
   next();
 });
 
-async function ensureLeadsFile() {
-  await mkdir(dataDir, { recursive: true });
-  if (!existsSync(leadsFile)) {
-    await writeFile(leadsFile, '[]', 'utf8');
-  }
-}
-
 let leadsWriteChain = Promise.resolve();
 
 function withLeadsLock(fn) {
@@ -44,22 +37,6 @@ function withLeadsLock(fn) {
     () => undefined,
   );
   return run;
-}
-
-async function readLeads() {
-  await ensureLeadsFile();
-  try {
-    const raw = await readFile(leadsFile, 'utf8');
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
-
-async function writeLeads(leads) {
-  await ensureLeadsFile();
-  await writeFile(leadsFile, JSON.stringify(leads, null, 2), 'utf8');
 }
 
 function formatAuDateTime(date = new Date()) {
@@ -198,12 +175,17 @@ function buildLeadFromWebsite(body = {}) {
 }
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, mode: isProduction ? 'production' : 'development' });
+  res.json({
+    ok: true,
+    mode: isProduction ? 'production' : 'development',
+    storage: 'sqlite',
+    csv: path.basename(leadsStore.paths.csvPath),
+  });
 });
 
 app.get('/api/leads', async (_req, res) => {
   try {
-    const leads = await readLeads();
+    const leads = leadsStore.getAllLeads();
     res.json({ ok: true, leads });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to load leads.';
@@ -228,9 +210,7 @@ app.post('/api/leads', async (req, res) => {
 
     const lead = buildLeadFromWebsite(body);
     await withLeadsLock(async () => {
-      const leads = await readLeads();
-      leads.unshift(lead);
-      await writeLeads(leads);
+      await leadsStore.insertLead(lead);
     });
 
     return res.status(201).json({ ok: true, lead });
@@ -244,14 +224,8 @@ app.put('/api/leads/:id', async (req, res) => {
   try {
     const updates = req.body || {};
     const lead = await withLeadsLock(async () => {
-      const leads = await readLeads();
-      const index = leads.findIndex((item) => item.id === req.params.id);
-      if (index < 0) return null;
-
       const { id: _id, ...safeUpdates } = updates;
-      leads[index] = { ...leads[index], ...safeUpdates, id: leads[index].id };
-      await writeLeads(leads);
-      return leads[index];
+      return leadsStore.updateLead(req.params.id, safeUpdates);
     });
 
     if (!lead) {
@@ -267,13 +241,7 @@ app.put('/api/leads/:id', async (req, res) => {
 
 app.delete('/api/leads/:id', async (req, res) => {
   try {
-    const deleted = await withLeadsLock(async () => {
-      const leads = await readLeads();
-      const next = leads.filter((item) => item.id !== req.params.id);
-      if (next.length === leads.length) return false;
-      await writeLeads(next);
-      return true;
-    });
+    const deleted = await withLeadsLock(async () => leadsStore.deleteLead(req.params.id));
 
     if (!deleted) {
       return res.status(404).json({ ok: false, error: 'Lead not found.' });
@@ -331,6 +299,11 @@ if (isProduction) {
 }
 
 const port = Number(process.env.PORT || 3001);
+
+await leadsStore.init();
+console.log(`[leads-db] SQLite: ${leadsStore.paths.dbPath}`);
+console.log(`[leads-db] CSV export: ${leadsStore.paths.csvPath}`);
+
 app.listen(port, '0.0.0.0', () => {
   console.log(`CareIT CRM server running on http://0.0.0.0:${port}`);
   if (isProduction) {
