@@ -2,6 +2,10 @@ import crypto from "node:crypto";
 import express from "express";
 import dotenv from "dotenv";
 import {
+  bookingAcknowledgement,
+  bookingCompleteMessage,
+  bookingIntro,
+  bookingIntroFollowUp,
   bookingQuestions,
   emptyLead,
   existingBookingReply,
@@ -15,7 +19,8 @@ import {
   quickQuestions,
   validationError,
   wantsBooking,
-  ORCA_BOOK_URL,
+  welcomeFollowUp,
+  welcomeGreeting,
   ORCA_PHONE_DISPLAY,
 } from "./conversation.js";
 import { sendText, sendTexts } from "./messenger.js";
@@ -90,11 +95,7 @@ async function startBooking(psid, session) {
   const first = bookingQuestions[0];
   await sendTexts(
     psid,
-    [
-      "I can help you book an appointment.",
-      `You can book online at ${ORCA_BOOK_URL}, or answer a few quick questions here.`,
-      first.prompt,
-    ],
+    [bookingIntro(), bookingIntroFollowUp(), first.prompt],
     first.quickReplies || [],
   );
 }
@@ -158,10 +159,7 @@ async function handleMessage(psid, text) {
       if (!wantsBooking(answer) && !isQuickQuestion(answer)) {
         await sendTexts(
           psid,
-          [
-            "Hi, would you like to make a booking? Or how can I help today?",
-            generalReply(answer),
-          ],
+          [welcomeGreeting(), welcomeFollowUp(), generalReply(answer)],
           quickQuestions,
         );
         return;
@@ -180,7 +178,7 @@ async function handleMessage(psid, text) {
 
     await sendTexts(
       psid,
-      [generalReply(answer), "Would you like to book an appointment? Reply Book to start."],
+      [generalReply(answer), "If you’d like, I can help you book an appointment — just say book."],
       quickQuestions,
     );
     return;
@@ -199,7 +197,8 @@ async function handleMessage(psid, text) {
   if (nextStep < bookingQuestions.length) {
     session.bookingStep = nextStep;
     const next = bookingQuestions[nextStep];
-    await sendText(psid, next.prompt, next.quickReplies || []);
+    const ack = bookingAcknowledgement(question.field, session.lead[question.field]);
+    await sendTexts(psid, [ack, next.prompt], next.quickReplies || []);
     return;
   }
 
@@ -207,10 +206,7 @@ async function handleMessage(psid, text) {
     await saveLead(session.lead);
     session.lastCompletedLead = { ...session.lead };
     session.followUpStep = null;
-    await sendText(
-      psid,
-      `Thank you, ${session.lead.name}. Your details have been saved and the Orca IT team will contact you on ${session.lead.phone}.`,
-    );
+    await sendText(psid, bookingCompleteMessage(session.lead));
   } catch (error) {
     console.error("[facebook] save lead failed:", error);
     await sendText(

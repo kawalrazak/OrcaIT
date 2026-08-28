@@ -1,7 +1,7 @@
 const GRAPH_URL = "https://graph.facebook.com/v21.0/me/messages";
 
 const REPLY_DELAY_MS = Number(process.env.REPLY_DELAY_MS || 5000);
-const BETWEEN_MESSAGES_MS = Number(process.env.BETWEEN_MESSAGES_MS || 1800);
+const BETWEEN_MESSAGES_MS = Number(process.env.BETWEEN_MESSAGES_MS || 1600);
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -14,6 +14,13 @@ function getPageToken() {
     return null;
   }
   return pageToken;
+}
+
+/** Vary delay by message length + small random pause so replies feel natural. */
+export function humanDelayMs(text, baseMs = REPLY_DELAY_MS) {
+  const lengthFactor = Math.min(2200, text.length * 20);
+  const jitter = Math.floor(Math.random() * 1000) - 350;
+  return Math.min(7500, Math.max(2800, Math.round(baseMs * 0.55 + lengthFactor + jitter)));
 }
 
 async function graphPost(body) {
@@ -46,6 +53,17 @@ export async function sendTypingOff(psid) {
   });
 }
 
+async function humanWait(psid, ms) {
+  await sendTypingOn(psid);
+  let remaining = ms;
+  while (remaining > 3000) {
+    await sleep(3000);
+    await sendTypingOn(psid);
+    remaining -= 3000;
+  }
+  if (remaining > 0) await sleep(remaining);
+}
+
 async function sendTextImmediate(psid, text, quickReplies = []) {
   const message = { text };
   if (quickReplies.length) {
@@ -63,19 +81,17 @@ async function sendTextImmediate(psid, text, quickReplies = []) {
   });
 }
 
-/** Shows typing, waits like a human, then sends the message. */
-export async function sendText(psid, text, quickReplies = [], delayMs = REPLY_DELAY_MS) {
-  await sendTypingOn(psid);
-  await sleep(delayMs);
+export async function sendText(psid, text, quickReplies = [], delayMs) {
+  const waitMs = delayMs ?? humanDelayMs(text);
+  await humanWait(psid, waitMs);
   await sendTextImmediate(psid, text, quickReplies);
   await sendTypingOff(psid);
 }
 
-/** First bubble waits ~7s; following bubbles use a shorter pause. */
 export async function sendTexts(psid, texts, lastQuickReplies = []) {
   for (let i = 0; i < texts.length; i += 1) {
     const isLast = i === texts.length - 1;
-    const delayMs = i === 0 ? REPLY_DELAY_MS : BETWEEN_MESSAGES_MS;
+    const delayMs = i === 0 ? humanDelayMs(texts[i]) : humanDelayMs(texts[i], BETWEEN_MESSAGES_MS);
     await sendText(psid, texts[i], isLast ? lastQuickReplies : [], delayMs);
   }
 }

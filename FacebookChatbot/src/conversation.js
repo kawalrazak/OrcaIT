@@ -58,11 +58,96 @@ export const emptyLead = {
   preferredContactTime: "",
 };
 
+function pickOne(items) {
+  return items[Math.floor(Math.random() * items.length)];
+}
+
+export function welcomeGreeting() {
+  return pickOne([
+    "Hi there! Thanks for messaging Orca IT.",
+    "Hello! Good to hear from you.",
+    "Hi! Thanks for getting in touch with Orca IT.",
+  ]);
+}
+
+export function welcomeFollowUp() {
+  return pickOne([
+    "Would you like to book an appointment, or is there something I can help with?",
+    "Are you looking to book a visit, or do you have a quick question?",
+    "Happy to help — would you like to make a booking today?",
+  ]);
+}
+
+export function bookingIntro() {
+  return pickOne([
+    "Absolutely — I can help you book that in.",
+    "Sure thing, I’ll help you get booked in.",
+    "No problem at all — let’s get your appointment sorted.",
+  ]);
+}
+
+export function bookingIntroFollowUp() {
+  return pickOne([
+    "I’ll just ask a few quick questions so our team knows how to help.",
+    "Just a few short questions and we’ll pass this to the team.",
+    "It’ll only take a minute — a few quick details and we’re done.",
+  ]);
+}
+
+export function bookingCompleteMessage(lead) {
+  const firstName = lead.name?.trim().split(/\s+/)[0] || "there";
+  return pickOne([
+    `All done, ${firstName} — thanks for your patience. Our team will give you a call on ${lead.phone} soon.`,
+    `Perfect, ${firstName}. Everything’s saved and someone from Orca IT will contact you on ${lead.phone}.`,
+    `Thanks ${firstName}! We’ve got your details and the team will be in touch on ${lead.phone} shortly.`,
+  ]);
+}
+
+export function bookingAcknowledgement(field, value) {
+  const firstName = value.trim().split(/\s+/)[0];
+  switch (field) {
+    case "existingCustomer":
+      return value === "Yes" ? "Welcome back — good to have you again." : "No worries at all.";
+    case "phone":
+      return "Thanks, I’ve got that number.";
+    case "name":
+      return firstName ? `Lovely to meet you, ${firstName}.` : "Thanks for that.";
+    case "supportFor":
+      return value === "Home" ? "Got it — this is for home." : "Got it — this is for your business.";
+    case "email":
+      return "Perfect, email noted.";
+    case "suburb":
+      return `${value} — thanks.`;
+    case "issue":
+      return "Thanks for explaining — that helps a lot.";
+    case "preferredContactTime":
+      return "Great, I’ve noted when suits you best.";
+    default:
+      return pickOne(["Thanks!", "Got it, thanks.", "Perfect, thank you."]);
+  }
+}
+
 export function generalReply(message) {
   const text = message.toLowerCase();
 
+  if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(text)) {
+    return pickOne([
+      "Hi! How can I help you today?",
+      "Hello there — what can I help you with?",
+      "Hey! Happy to help — what do you need?",
+    ]);
+  }
+
+  if (text.includes("thank")) {
+    return pickOne([
+      "You’re very welcome!",
+      "Happy to help!",
+      "Any time — glad I could help.",
+    ]);
+  }
+
   if (text.includes("price") || text.includes("cost") || text.includes("quote")) {
-    return "Pricing depends on the service and work required. Complete a booking and we’ll contact you with clear next steps.";
+    return "Pricing really depends on the job, but once you book in our team can talk you through the options clearly.";
   }
 
   if (
@@ -72,7 +157,7 @@ export function generalReply(message) {
     text.includes("contact") ||
     text.includes("speak")
   ) {
-    return `Call ${ORCA_PHONE_DISPLAY} or email ${ORCA_EMAIL} and our friendly team will help you.`;
+    return `Of course — you can call us on ${ORCA_PHONE_DISPLAY} or email ${ORCA_EMAIL} and someone friendly will help you out.`;
   }
 
   if (
@@ -81,10 +166,10 @@ export function generalReply(message) {
     text.includes("computer") ||
     text.includes("support")
   ) {
-    return "We help with PC and Mac repairs, internet and networking, virus removal, email, printers, data recovery, Smart TV setup, broadband, managed IT, cloud services, websites and more.";
+    return "We look after things like PC and Mac repairs, internet and networking, virus removal, email, printers, data recovery, Smart TV setup, broadband, managed IT, cloud, websites and more.";
   }
 
-  return `Thanks for your message. You can make a booking here, call ${ORCA_PHONE_DISPLAY}, or email ${ORCA_EMAIL}.`;
+  return `Happy to help. You can book here, call ${ORCA_PHONE_DISPLAY}, or email ${ORCA_EMAIL}.`;
 }
 
 export function wantsBooking(message) {
@@ -105,7 +190,7 @@ export function followUpChoicePrompt(lead) {
   const issue = lead.issue?.trim() || "your enquiry";
   const when = lead.preferredContactTime?.trim();
   const whenText = when ? ` (${when})` : "";
-  return `Hi again! Are you getting in touch about your recent booking for "${issue}"${whenText}, or would you like to make a new appointment?`;
+  return `Welcome back! Just checking — is this about your recent booking for "${issue}"${whenText}, or would you like to start a new one?`;
 }
 
 export const followUpQuickReplies = ["Recent booking", "New booking"];
@@ -138,33 +223,33 @@ export function isNewBookingChoice(message) {
 }
 
 export function existingBookingReply(lead) {
-  const name = lead.name?.trim() || "there";
+  const name = lead.name?.trim().split(/\s+/)[0] || "there";
   const issue = lead.issue?.trim() || "your enquiry";
   const phone = lead.phone?.trim() || ORCA_PHONE_DISPLAY;
   const when = lead.preferredContactTime?.trim();
-  const whenLine = when ? ` at your preferred time (${when})` : "";
+  const whenLine = when ? ` around ${when}` : " soon";
 
-  return `Thanks ${name}. I can see your recent booking about ${issue}. Our team will contact you on ${phone}${whenLine}. If you need urgent help, call ${ORCA_PHONE_DISPLAY}.`;
+  return `No worries, ${name} — I can see your booking about ${issue}. Our team will call you on ${phone}${whenLine}. If it’s urgent, you can also ring us on ${ORCA_PHONE_DISPLAY}.`;
 }
 
 export function validationError(field, value) {
-  if (!value.trim()) return "Please enter a response so I can continue.";
+  if (!value.trim()) return "Sorry, I didn’t catch that — could you type that again for me?";
   if (field === "phone" && !/^[+()\d\s-]{8,20}$/.test(value.trim())) {
-    return "Please enter a valid phone number, including the area code if needed.";
+    return "That phone number doesn’t look quite right — could you include the area code?";
   }
   if (field === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
-    return "Please enter a valid email address.";
+    return "Hmm, that email doesn’t look right — could you double-check it?";
   }
   if (field === "existingCustomer") {
     const normalised = value.trim().toLowerCase();
     if (!["yes", "no", "y", "n"].includes(normalised)) {
-      return "Please answer Yes or No.";
+      return "Just a quick yes or no is fine for that one.";
     }
   }
   if (field === "supportFor") {
     const normalised = value.trim().toLowerCase();
     if (!["home", "business"].includes(normalised)) {
-      return "Please answer Home or Business.";
+      return "No worries — is this for home or business?";
     }
   }
   return null;
