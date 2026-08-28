@@ -235,6 +235,8 @@ export function returningUserPrompt(lead) {
   const issue = lead.issue?.trim() || "your enquiry";
   return `I can see your booking about ${issue}. Would you like an update on that, or make a new appointment?`;
 }
+
+export function isExistingBookingChoice(message) {
   const text = message.trim().toLowerCase();
   return (
     text === "recent booking" ||
@@ -265,10 +267,12 @@ export function existingBookingReply(lead) {
   const name = lead.name?.trim().split(/\s+/)[0] || "there";
   const issue = lead.issue?.trim() || "your enquiry";
   const phone = lead.phone?.trim() || ORCA_PHONE_DISPLAY;
+  const suburb = lead.suburb?.trim();
   const when = lead.preferredContactTime?.trim();
   const whenLine = when ? ` around ${when}` : " soon";
+  const suburbLine = suburb ? ` in ${suburb}` : "";
 
-  return `No worries, ${name} — I can see your booking about ${issue}. Our team will call you on ${phone}${whenLine}. If it’s urgent, you can also ring us on ${ORCA_PHONE_DISPLAY}.`;
+  return `Hi ${name}, your booking is saved with us. Issue: ${issue}${suburbLine}. Our team will call you on ${phone}${whenLine}. If it’s urgent, ring ${ORCA_PHONE_DISPLAY}.`;
 }
 
 export function validationError(field, value) {
