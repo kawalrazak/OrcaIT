@@ -1,10 +1,12 @@
 export const ORCA_PHONE_DISPLAY = "0498 082 750";
 export const ORCA_EMAIL = "info@orcait.com.au";
+export const ORCA_BOOK_URL = "https://orcait.com.au/book";
 
+// Same booking flow as OrcaITWeb/src/components/orca-chatbot.tsx
 export const bookingQuestions = [
   {
     field: "existingCustomer",
-    prompt: "Have you used Orca IT before? Reply Yes or No.",
+    prompt: "Have you used Orca IT before?",
     quickReplies: ["Yes", "No"],
   },
   {
@@ -17,7 +19,7 @@ export const bookingQuestions = [
   },
   {
     field: "supportFor",
-    prompt: "Is this booking for your home or your business? Reply Home or Business.",
+    prompt: "Is this booking for your home or your business?",
     quickReplies: ["Home", "Business"],
   },
   {
@@ -36,6 +38,13 @@ export const bookingQuestions = [
     field: "preferredContactTime",
     prompt: "What is the best day or time for our team to contact you?",
   },
+];
+
+export const quickQuestions = [
+  "Book an appointment",
+  "What services do you offer?",
+  "How much will it cost?",
+  "Can I speak to someone?",
 ];
 
 export const emptyLead = {
@@ -60,7 +69,8 @@ export function generalReply(message) {
     text.includes("call") ||
     text.includes("phone") ||
     text.includes("email") ||
-    text.includes("contact")
+    text.includes("contact") ||
+    text.includes("speak")
   ) {
     return `Call ${ORCA_PHONE_DISPLAY} or email ${ORCA_EMAIL} and our friendly team will help you.`;
   }
@@ -74,7 +84,7 @@ export function generalReply(message) {
     return "We help with PC and Mac repairs, internet and networking, virus removal, email, printers, data recovery, Smart TV setup, broadband, managed IT, cloud services, websites and more.";
   }
 
-  return `Thanks for your message. You can book an appointment here, call ${ORCA_PHONE_DISPLAY}, or email ${ORCA_EMAIL}.`;
+  return `Thanks for your message. You can make a booking here, call ${ORCA_PHONE_DISPLAY}, or email ${ORCA_EMAIL}.`;
 }
 
 export function wantsBooking(message) {
@@ -85,6 +95,10 @@ export function wantsBooking(message) {
     text.includes("booking") ||
     text === "yes"
   );
+}
+
+export function isQuickQuestion(message) {
+  return quickQuestions.some((question) => question.toLowerCase() === message.trim().toLowerCase());
 }
 
 export function validationError(field, value) {

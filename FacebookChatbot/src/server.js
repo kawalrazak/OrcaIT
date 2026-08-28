@@ -5,9 +5,12 @@ import {
   bookingQuestions,
   emptyLead,
   generalReply,
+  isQuickQuestion,
   normaliseField,
+  quickQuestions,
   validationError,
   wantsBooking,
+  ORCA_BOOK_URL,
   ORCA_PHONE_DISPLAY,
 } from "./conversation.js";
 import { sendText, sendTexts } from "./messenger.js";
@@ -37,6 +40,7 @@ function getSession(psid) {
   const session = {
     bookingStep: null,
     lead: { ...emptyLead },
+    greeted: false,
     updatedAt: Date.now(),
   };
   sessions.set(psid, session);
@@ -78,12 +82,21 @@ async function startBooking(psid, session) {
   await sendTexts(
     psid,
     [
-      "Hi, I can help you book an appointment with Orca IT.",
-      "I’ll ask a few quick questions, then our team will contact you.",
+      "I can help you book an appointment.",
+      `You can book online at ${ORCA_BOOK_URL}, or answer a few quick questions here.`,
       first.prompt,
     ],
     first.quickReplies || [],
   );
+}
+
+async function replyToGeneral(psid, answer) {
+  if (answer === "Book an appointment") {
+    await startBooking(psid, getSession(psid));
+    return;
+  }
+
+  await sendTexts(psid, [generalReply(answer)], quickQuestions);
 }
 
 async function handleMessage(psid, text) {
@@ -92,15 +105,35 @@ async function handleMessage(psid, text) {
   if (!answer) return;
 
   if (session.bookingStep === null) {
-    if (wantsBooking(answer)) {
+    if (!session.greeted) {
+      session.greeted = true;
+      if (!wantsBooking(answer) && !isQuickQuestion(answer)) {
+        await sendTexts(
+          psid,
+          [
+            "Hi, would you like to make a booking? Or how can I help today?",
+            generalReply(answer),
+          ],
+          quickQuestions,
+        );
+        return;
+      }
+    }
+
+    if (wantsBooking(answer) || answer === "Book an appointment") {
       await startBooking(psid, session);
+      return;
+    }
+
+    if (isQuickQuestion(answer)) {
+      await replyToGeneral(psid, answer);
       return;
     }
 
     await sendTexts(
       psid,
       [generalReply(answer), "Would you like to book an appointment? Reply Book to start."],
-      ["Book an appointment"],
+      quickQuestions,
     );
     return;
   }
