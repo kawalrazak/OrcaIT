@@ -174,6 +174,12 @@ export default function HomePage() {
               <Link href="/about" className="hover:text-brand-blue">
                 About
               </Link>
+              <Link href="/privacy" className="hover:text-brand-blue">
+                Privacy Policy
+              </Link>
+              <Link href="/terms" className="hover:text-brand-blue">
+                Terms of Service
+              </Link>
             </div>
             <p className="mt-8 font-extrabold text-brand-navy">Let&apos;s talk</p>
             <a
@@ -186,6 +192,14 @@ export default function HomePage() {
         </div>
         <div className="border-t border-red-100 px-5 py-6 text-center text-xs text-slate-500">
           © {new Date().getFullYear()} Orca IT. All rights reserved.
+          {" · "}
+          <Link href="/privacy" className="hover:text-brand-blue">
+            Privacy
+          </Link>
+          {" · "}
+          <Link href="/terms" className="hover:text-brand-blue">
+            Terms
+          </Link>
         </div>
       </footer>
     </main>

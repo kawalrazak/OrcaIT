@@ -157,11 +157,25 @@ export function MarketingPageShell({
               <Link href="/about" className="hover:text-brand-blue">
                 About
               </Link>
+              <Link href="/privacy" className="hover:text-brand-blue">
+                Privacy Policy
+              </Link>
+              <Link href="/terms" className="hover:text-brand-blue">
+                Terms of Service
+              </Link>
             </div>
           </div>
         </div>
         <div className="border-t border-red-100 px-5 py-6 text-center text-xs text-slate-500">
           © {new Date().getFullYear()} Orca IT. All rights reserved.
+          {" · "}
+          <Link href="/privacy" className="hover:text-brand-blue">
+            Privacy
+          </Link>
+          {" · "}
+          <Link href="/terms" className="hover:text-brand-blue">
+            Terms
+          </Link>
         </div>
       </footer>
     </main>
