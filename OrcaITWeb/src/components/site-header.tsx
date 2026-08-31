@@ -16,7 +16,11 @@ const homeSupportLinks = [
   })) ?? []),
 ];
 
-export function SiteHeader() {
+type SiteHeaderProps = {
+  showActions?: boolean;
+};
+
+export function SiteHeader({ showActions = true }: SiteHeaderProps) {
   return (
     <header className="sticky top-0 z-30 border-b border-red-100/90 bg-white/90 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-3.5 lg:px-8">
@@ -81,23 +85,25 @@ export function SiteHeader() {
             About
           </Link>
         </nav>
-        <div className="hidden items-center gap-4 md:flex">
-          <a
-            href={`tel:${ORCA_PHONE_TEL}`}
-            className="inline-flex items-center gap-2 text-sm font-bold text-brand-navy transition hover:text-brand-fun"
-          >
-            <Phone className="size-4 text-brand-fun" />
-            {ORCA_PHONE_DISPLAY}
-          </a>
-          <a
-            href="/book"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="rounded-full bg-brand-fun px-5 py-2.5 text-sm font-black text-white transition hover:bg-red-600"
-          >
-            Book Online
-          </a>
-        </div>
+        {showActions ? (
+          <div className="hidden items-center gap-4 md:flex">
+            <a
+              href={`tel:${ORCA_PHONE_TEL}`}
+              className="inline-flex items-center gap-2 text-sm font-bold text-brand-navy transition hover:text-brand-fun"
+            >
+              <Phone className="size-4 text-brand-fun" />
+              {ORCA_PHONE_DISPLAY}
+            </a>
+            <a
+              href="/book"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full bg-brand-fun px-5 py-2.5 text-sm font-black text-white transition hover:bg-red-600"
+            >
+              Book Online
+            </a>
+          </div>
+        ) : null}
         <details className="group relative md:hidden">
           <summary className="grid size-10 cursor-pointer list-none place-items-center rounded-xl border border-red-200 text-brand-navy">
             <Menu className="size-5" />
@@ -135,17 +141,21 @@ export function SiteHeader() {
                 {item.title}
               </Link>
             ))}
-            <a className="rounded-lg px-3 py-2 hover:bg-brand-mist" href={`tel:${ORCA_PHONE_TEL}`}>
-              Call {ORCA_PHONE_DISPLAY}
-            </a>
-            <a
-              className="rounded-lg px-3 py-2 hover:bg-brand-mist"
-              href="/book"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Book Online
-            </a>
+            {showActions ? (
+              <>
+                <a className="rounded-lg px-3 py-2 hover:bg-brand-mist" href={`tel:${ORCA_PHONE_TEL}`}>
+                  Call {ORCA_PHONE_DISPLAY}
+                </a>
+                <a
+                  className="rounded-lg px-3 py-2 hover:bg-brand-mist"
+                  href="/book"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Book Online
+                </a>
+              </>
+            ) : null}
           </nav>
         </details>
       </div>

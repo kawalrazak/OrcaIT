@@ -16,6 +16,9 @@ export default function TermsPage() {
       eyebrow="Legal"
       title="Terms of Service"
       description="Terms for using the Orca IT website, booking enquiries, chatbot and Facebook Messenger."
+      showHeroActions={false}
+      showCta={false}
+      showHeaderActions={false}
     >
       <section className="bg-surface py-16 lg:py-20">
         <div className="mx-auto max-w-3xl space-y-10 px-5 lg:px-8">

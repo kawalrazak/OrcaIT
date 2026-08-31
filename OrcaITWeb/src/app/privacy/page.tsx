@@ -16,6 +16,9 @@ export default function PrivacyPage() {
       eyebrow="Legal"
       title="Privacy Policy"
       description="How we handle your personal information when you contact Orca IT, book a service, or message us on Facebook."
+      showHeroActions={false}
+      showCta={false}
+      showHeaderActions={false}
     >
       <section className="bg-surface py-16 lg:py-20">
         <div className="mx-auto max-w-3xl space-y-10 px-5 lg:px-8">

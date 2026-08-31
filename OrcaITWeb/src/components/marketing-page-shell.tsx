@@ -15,6 +15,9 @@ type MarketingPageShellProps = {
   heroImageAlt?: string;
   heroImagePosition?: string;
   bookHref?: string;
+  showHeroActions?: boolean;
+  showCta?: boolean;
+  showHeaderActions?: boolean;
 };
 
 export function MarketingPageShell({
@@ -26,10 +29,13 @@ export function MarketingPageShell({
   heroImageAlt = "Orca IT",
   heroImagePosition = "object-[center_30%]",
   bookHref = "/book",
+  showHeroActions = true,
+  showCta = true,
+  showHeaderActions = true,
 }: MarketingPageShellProps) {
   return (
     <main className="overflow-hidden bg-white">
-      <SiteHeader />
+      <SiteHeader showActions={showHeaderActions} />
 
       <section
         className={`relative overflow-hidden text-white ${
@@ -75,54 +81,58 @@ export function MarketingPageShell({
           <p className="mt-6 max-w-2xl text-lg leading-8 text-sky-50/90">
             {description}
           </p>
-          <div className="mt-9 flex flex-col gap-4 sm:flex-row">
-            <Link
-              href={bookHref}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-fun px-7 py-4 font-black text-white transition hover:bg-red-600"
-            >
-              Book Online
-              <ArrowRight className="size-4" />
-            </Link>
-            <a
-              href={`tel:${ORCA_PHONE_TEL}`}
-              className="inline-flex items-center justify-center gap-2 rounded-full border border-white/25 px-7 py-4 font-bold text-white transition hover:border-brand-sky hover:text-brand-sky"
-            >
-              Call {ORCA_PHONE_DISPLAY}
-            </a>
-          </div>
+          {showHeroActions ? (
+            <div className="mt-9 flex flex-col gap-4 sm:flex-row">
+              <Link
+                href={bookHref}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-fun px-7 py-4 font-black text-white transition hover:bg-red-600"
+              >
+                Book Online
+                <ArrowRight className="size-4" />
+              </Link>
+              <a
+                href={`tel:${ORCA_PHONE_TEL}`}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/25 px-7 py-4 font-bold text-white transition hover:border-brand-sky hover:text-brand-sky"
+              >
+                Call {ORCA_PHONE_DISPLAY}
+              </a>
+            </div>
+          ) : null}
         </div>
       </section>
 
       {children}
 
-      <section className="px-5 pb-24 lg:px-8 lg:pb-32">
-        <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] bg-brand-navy px-6 py-16 text-center text-white sm:px-12 lg:py-20">
-          <div className="absolute left-1/2 top-0 h-64 w-96 -translate-x-1/2 rounded-full bg-brand-sky/25 blur-3xl" />
-          <div className="relative mx-auto max-w-3xl">
-            <h2 className="text-3xl font-extrabold tracking-[-0.04em] sm:text-4xl">
-              Ready to get started?
-            </h2>
-            <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-white/85">
-              Book online or call us and we&apos;ll help you get back up and running.
-            </p>
-            <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link
-                href={bookHref}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-fun px-7 py-4 font-black text-white transition hover:bg-red-600"
-              >
-                Book an appointment
-              </Link>
-              <a
-                href={`mailto:${ORCA_EMAIL}`}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-white/25 px-7 py-4 font-bold text-white transition hover:border-brand-sky hover:text-brand-sky"
-              >
-                <Mail className="size-5" />
-                {ORCA_EMAIL}
-              </a>
+      {showCta ? (
+        <section className="px-5 pb-24 lg:px-8 lg:pb-32">
+          <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[2.5rem] bg-brand-navy px-6 py-16 text-center text-white sm:px-12 lg:py-20">
+            <div className="absolute left-1/2 top-0 h-64 w-96 -translate-x-1/2 rounded-full bg-brand-sky/25 blur-3xl" />
+            <div className="relative mx-auto max-w-3xl">
+              <h2 className="text-3xl font-extrabold tracking-[-0.04em] sm:text-4xl">
+                Ready to get started?
+              </h2>
+              <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-white/85">
+                Book online or call us and we&apos;ll help you get back up and running.
+              </p>
+              <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
+                <Link
+                  href={bookHref}
+                  className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-fun px-7 py-4 font-black text-white transition hover:bg-red-600"
+                >
+                  Book an appointment
+                </Link>
+                <a
+                  href={`mailto:${ORCA_EMAIL}`}
+                  className="inline-flex items-center justify-center gap-2 rounded-full border border-white/25 px-7 py-4 font-bold text-white transition hover:border-brand-sky hover:text-brand-sky"
+                >
+                  <Mail className="size-5" />
+                  {ORCA_EMAIL}
+                </a>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       <footer className="border-t border-red-100 bg-white">
         <div className="mx-auto grid max-w-7xl gap-10 px-5 py-14 md:grid-cols-[1.4fr_1fr_1fr] lg:px-8">
