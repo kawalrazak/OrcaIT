@@ -127,49 +127,208 @@ export function bookingAcknowledgement(field, value) {
   }
 }
 
-export function generalReply(message) {
+const pricingPattern =
+  /\b(price|prices|pricing|cost|costs|quote|quotes|charge|charges|how much|fee|fees|expensive|afford|rate|rates)\b/i;
+const repairPattern =
+  /\b(repair|repairs|fix|fixed|fixing|look at|sort out|help with|work on|troubleshoot|diagnose)\b/i;
+const capabilityPattern =
+  /\b(will you|can you|do you|would you|are you able|can u|will u|do u guys|can you guys|will you guys|do you guys)\b/i;
+const servicesPattern =
+  /\b(what services|what do you offer|what can you do|services do you|what do you do)\b/i;
+const contactPattern =
+  /\b(call|phone|email|contact|speak to|talk to|ring)\b/i;
+const devicePattern = /\b(pc|computer|desktop|laptop|mac|imac|notebook)\b/i;
+const noPowerPattern =
+  /\b(not turning on|won't turn on|wont turn on|doesn't turn on|doesnt turn on|won't start|wont start|doesn't start|doesnt start|no power|dead|not powering|power off)\b/i;
+
+export function detectIssueTopic(message) {
   const text = message.toLowerCase();
 
-  if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(text)) {
+  if (noPowerPattern.test(text) && devicePattern.test(text)) return "pc_no_power";
+  if (noPowerPattern.test(text)) return "pc_no_power";
+  if (/\b(virus|malware|hacked|ransomware|spyware)\b/.test(text)) return "virus";
+  if (/\b(wifi|wi-fi|internet|network|router|broadband)\b/.test(text)) return "network";
+  if (/\b(printer|printing)\b/.test(text)) return "printer";
+  if (/\b(email|outlook|gmail)\b/.test(text)) return "email";
+  if (/\b(slow|freezing|frozen|lagging)\b/.test(text) && devicePattern.test(text)) return "slow_pc";
+  if (devicePattern.test(text)) return "device";
+  return null;
+}
+
+function followUpVariant(topic, message) {
+  const text = message.toLowerCase();
+
+  if (pricingPattern.test(text) || capabilityPattern.test(text)) {
     return pickOne([
-      "Hi! How can I help you today?",
-      "Hello there — what can I help you with?",
-      "Hey! Happy to help — what do you need?",
+      "Yes — we can help with that. Pricing depends on the fault, but our team will give you a clear quote before any work starts. Say book when you’re ready.",
+      "Absolutely, that’s something we handle. We’ll talk you through cost once we know what’s wrong — say book and I’ll pass your details to the team.",
     ]);
+  }
+
+  switch (topic) {
+    case "pc_no_power":
+      return "Yes, we definitely repair desktops and PCs that won’t turn on. Say book and I’ll grab your details for a callback.";
+    case "device":
+    case "repair":
+      return "Yes, we can take a look at that for you. Say book when you’d like our team to call you back.";
+    default:
+      return pickOne([
+        "Sorry if I wasn’t clear — yes, we can help. Say book and I’ll take a few details for our team.",
+        "Yes, that’s the kind of thing we help with every day. Say book when you’re ready.",
+      ]);
+  }
+}
+
+function replyForIssueTopic(topic, { asksPrice, asksRepair }) {
+  switch (topic) {
+    case "pc_no_power":
+      if (asksPrice) {
+        return "Yes, we repair PCs and desktops that won’t turn on. We’d need to diagnose it first — remote support often starts from $99, and on-site repairs are quoted after we check the machine.";
+      }
+      return "Yes, we can help with that. A desktop that won’t turn on is often a power, connection, or hardware issue — our technicians can diagnose and fix it.";
+    case "virus":
+      return asksPrice
+        ? "Yes, we remove viruses and malware. Cost depends on how infected the machine is — remote cleanup often starts from $99, and we’ll confirm before any work."
+        : "Yes, we can help remove viruses and malware and get your computer running safely again.";
+    case "network":
+      return asksPrice
+        ? "Yes, we fix Wi‑Fi and internet issues. Pricing depends on whether it’s a quick remote fix or an on-site visit — our team will quote before starting."
+        : "Yes, we troubleshoot Wi‑Fi, router, and internet connection problems for homes and businesses.";
+    case "printer":
+      return "Yes, we help with printer setup, connection issues, and driver problems.";
+    case "email":
+      return "Yes, we can help with email setup and issues on Outlook, Gmail, and other accounts.";
+    case "slow_pc":
+      return asksPrice
+        ? "Yes, we can speed up slow PCs and laptops. We’ll check what’s causing it and quote before any repair — remote tune-ups often start from $99."
+        : "Yes, slow computers are something we fix all the time — often it’s storage, startup programs, or malware.";
+    case "device":
+      if (asksPrice) {
+        return "Yes, we repair PCs, Macs, laptops, and desktops. The cost depends on the fault — we’ll give you a clear quote after a quick assessment.";
+      }
+      return "Yes, we repair PCs, Macs, laptops, and desktops for homes and businesses.";
+    default:
+      return null;
+  }
+}
+
+export function buildBotReply(message, context = {}) {
+  const text = message.toLowerCase().trim();
+  const asksPrice = pricingPattern.test(text);
+  const asksRepair = repairPattern.test(text);
+  const asksCapability = capabilityPattern.test(text);
+  const asksServices = servicesPattern.test(text) || text === "what services do you offer?";
+  const asksContact = contactPattern.test(text) && !asksRepair && !asksPrice;
+  const issueTopic = detectIssueTopic(message) || context.lastTopic || null;
+
+  let replyText = "";
+  let topic = issueTopic || "general";
+  let suggestBooking = true;
+
+  if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(text) && text.length < 50) {
+    return {
+      text: pickOne([
+        "Hi! How can I help you today?",
+        "Hello there — what can I help you with?",
+        "Hey! Happy to help — what do you need?",
+      ]),
+      topic: "greeting",
+      suggestBooking: true,
+    };
   }
 
   if (text.includes("thank")) {
-    return pickOne([
-      "You’re very welcome!",
-      "Happy to help!",
-      "Any time — glad I could help.",
+    return {
+      text: pickOne([
+        "You’re very welcome!",
+        "Happy to help!",
+        "Any time — glad I could help.",
+      ]),
+      topic: "thanks",
+      suggestBooking: false,
+    };
+  }
+
+  if (asksRepair && asksPrice) {
+    const issueReply = issueTopic ? replyForIssueTopic(issueTopic, { asksPrice: true, asksRepair: true }) : null;
+    replyText =
+      issueReply ||
+      "Yes, we can repair that. Pricing depends on the fault — remote support often starts from $99, and we’ll give you a clear quote before any on-site work.";
+    topic = issueTopic || "repair_pricing";
+  } else if (asksPrice) {
+    replyText =
+      "Pricing depends on the job. Remote support often starts from $99, and on-site or hardware repairs are quoted after we assess the issue — there’s no surprise charge without your okay.";
+    topic = "pricing";
+  } else if (asksCapability || /\b(will you do|can you do|do you do)\b/.test(text)) {
+    if (issueTopic && !detectIssueTopic(message)) {
+      replyText = pickOne([
+        "Yes, absolutely — we can help with that. Say book when you’re ready and I’ll pass your details to our team.",
+        "Yes, that’s exactly the kind of thing we fix. Say book and I’ll arrange a callback for you.",
+      ]);
+      topic = issueTopic;
+    } else {
+      const issueReply = issueTopic ? replyForIssueTopic(issueTopic, { asksPrice: false, asksRepair: true }) : null;
+      replyText =
+        issueReply ||
+        pickOne([
+          "Yes, absolutely — that’s the kind of work we do. Our team can talk through the next steps with you.",
+          "Yes, we can help with that. Our technicians handle PC and Mac issues like this regularly.",
+        ]);
+      topic = issueTopic || "capability";
+    }
+  } else if (issueTopic) {
+    const issueReply = replyForIssueTopic(issueTopic, { asksPrice, asksRepair });
+    if (issueReply) {
+      replyText = issueReply;
+      topic = issueTopic;
+    }
+  } else if (asksRepair) {
+    replyText =
+      "Yes, we repair PCs, Macs, laptops, printers, networks, and more. Tell me what’s going wrong and I can point you in the right direction.";
+    topic = "repair";
+  } else if (asksServices) {
+    replyText =
+      "We look after PC and Mac repairs, internet and networking, virus removal, email, printers, data recovery, Smart TV setup, broadband, managed IT, cloud, and websites.";
+    topic = "services";
+    suggestBooking = true;
+  } else if (asksContact) {
+    replyText = `Of course — call us on ${ORCA_PHONE_DISPLAY} or email ${ORCA_EMAIL} and someone from our team will help you.`;
+    topic = "contact";
+    suggestBooking = false;
+  } else {
+    replyText = pickOne([
+      `I can help with that. Tell me a bit more about the problem, or say book and I’ll take your details for a callback.`,
+      `No worries — describe what’s happening and I’ll let you know how we can help, or say book to arrange a callback.`,
     ]);
+    topic = context.lastTopic || "general";
   }
 
-  if (text.includes("price") || text.includes("cost") || text.includes("quote")) {
-    return "Pricing really depends on the job, but once you book in our team can talk you through the options clearly.";
+  if (context.lastReply && context.lastReply === replyText) {
+    replyText = followUpVariant(topic, message);
+    suggestBooking = true;
   }
 
-  if (
-    text.includes("call") ||
-    text.includes("phone") ||
-    text.includes("email") ||
-    text.includes("contact") ||
-    text.includes("speak")
-  ) {
-    return `Of course — you can call us on ${ORCA_PHONE_DISPLAY} or email ${ORCA_EMAIL} and someone friendly will help you out.`;
+  return { text: replyText, topic, suggestBooking };
+}
+
+export function composeGeneralResponse(message, context = {}) {
+  const result = buildBotReply(message, context);
+  const texts = [result.text];
+
+  if (result.suggestBooking && !/\b(say book|just book|book a callback|book when)\b/i.test(result.text)) {
+    texts.push(
+      pickOne([
+        "If you’d like, I can help you book — just say book.",
+        "Say book when you’re ready and I’ll take a few details for our team.",
+      ]),
+    );
   }
 
-  if (
-    text.includes("service") ||
-    text.includes("repair") ||
-    text.includes("computer") ||
-    text.includes("support")
-  ) {
-    return "We look after things like PC and Mac repairs, internet and networking, virus removal, email, printers, data recovery, Smart TV setup, broadband, managed IT, cloud, websites and more.";
-  }
+  return { texts, topic: result.topic, mainReply: result.text };
+}
 
-  return `Happy to help. You can book here, call ${ORCA_PHONE_DISPLAY}, or email ${ORCA_EMAIL}.`;
+export function generalReply(message, context = {}) {
+  return buildBotReply(message, context).text;
 }
 
 export function wantsBooking(message) {

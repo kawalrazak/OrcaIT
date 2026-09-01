@@ -8,6 +8,8 @@ import {
   bookingIntroFollowUp,
   bookingQuestions,
   emptyLead,
+  composeGeneralResponse,
+  detectIssueTopic,
   existingBookingReply,
   followUpChoicePrompt,
   followUpQuickReplies,
@@ -61,6 +63,8 @@ async function ensureSession(psid) {
     greeted: false,
     lastCompletedLead: persistedLead,
     followUpStep: null,
+    lastTopic: null,
+    lastBotReply: null,
     updatedAt: Date.now(),
   };
   sessions.set(psid, session);
@@ -174,7 +178,7 @@ async function handleReturningUser(psid, session, answer) {
   if (isQuickQuestion(answer)) {
     await sendTexts(
       psid,
-      [generalReply(answer), returningUserPrompt(lead)],
+      [generalReply(answer, { lastTopic: session.lastTopic, lastReply: session.lastBotReply })],
       followUpQuickReplies,
     );
     session.followUpStep = "awaiting_choice";
@@ -186,13 +190,24 @@ async function handleReturningUser(psid, session, answer) {
   return true;
 }
 
+async function sendGeneralReply(psid, session, answer) {
+  const { texts, topic, mainReply } = composeGeneralResponse(answer, {
+    lastTopic: session.lastTopic,
+    lastReply: session.lastBotReply,
+  });
+  session.lastTopic = topic;
+  session.lastBotReply = mainReply;
+  await sendTexts(psid, texts, quickQuestions);
+}
+
 async function replyToGeneral(psid, answer) {
+  const session = await ensureSession(psid);
   if (answer === "Book an appointment") {
-    await startBooking(psid, ensureSession(psid));
+    await startBooking(psid, session);
     return;
   }
 
-  await sendTexts(psid, [generalReply(answer)], quickQuestions);
+  await sendGeneralReply(psid, session, answer);
 }
 
 async function handleMessage(psid, text) {
@@ -246,11 +261,25 @@ async function handleMessage(psid, text) {
   if (!session.greeted) {
     session.greeted = true;
     if (!wantsBooking(answer) && !isQuickQuestion(answer)) {
-      await sendTexts(
-        psid,
-        [welcomeGreeting(), welcomeFollowUp(), generalReply(answer)],
-        quickQuestions,
-      );
+      const issueTopic = detectIssueTopic(answer);
+      const isShortGreeting =
+        /^(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(answer.toLowerCase()) &&
+        answer.trim().length < 50;
+
+      if (issueTopic) {
+        const { texts, topic, mainReply } = composeGeneralResponse(answer);
+        session.lastTopic = topic;
+        session.lastBotReply = mainReply;
+        await sendTexts(psid, [welcomeGreeting(), ...texts], quickQuestions);
+      } else if (isShortGreeting) {
+        await sendTexts(psid, [welcomeGreeting(), welcomeFollowUp()], quickQuestions);
+        session.lastTopic = "greeting";
+      } else {
+        const { mainReply, topic } = composeGeneralResponse(answer);
+        session.lastTopic = topic;
+        session.lastBotReply = mainReply;
+        await sendTexts(psid, [welcomeGreeting(), welcomeFollowUp(), mainReply], quickQuestions);
+      }
       return;
     }
   }
@@ -265,11 +294,7 @@ async function handleMessage(psid, text) {
     return;
   }
 
-  await sendTexts(
-    psid,
-    [generalReply(answer), "If you’d like, I can help you book an appointment — just say book."],
-    quickQuestions,
-  );
+  await sendGeneralReply(psid, session, answer);
 }
 
 app.get("/health", (_req, res) => {

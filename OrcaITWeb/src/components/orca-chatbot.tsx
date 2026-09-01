@@ -94,32 +94,165 @@ const quickQuestions = [
   "Can I speak to someone?",
 ];
 
-function generalReply(message: string) {
+const pricingPattern =
+  /\b(price|prices|pricing|cost|costs|quote|quotes|charge|charges|how much|fee|fees|expensive|afford|rate|rates)\b/i;
+const repairPattern =
+  /\b(repair|repairs|fix|fixed|fixing|look at|sort out|help with|work on|troubleshoot|diagnose)\b/i;
+const capabilityPattern =
+  /\b(will you|can you|do you|would you|are you able|can u|will u|do u guys|can you guys|will you guys|do you guys)\b/i;
+const servicesPattern =
+  /\b(what services|what do you offer|what can you do|services do you|what do you do)\b/i;
+const contactPattern =
+  /\b(call|phone|email|contact|speak to|talk to|ring)\b/i;
+const devicePattern = /\b(pc|computer|desktop|laptop|mac|imac|notebook)\b/i;
+const noPowerPattern =
+  /\b(not turning on|won't turn on|wont turn on|doesn't turn on|doesnt turn on|won't start|wont start|doesn't start|doesnt start|no power|dead|not powering|power off)\b/i;
+
+type ReplyTopic =
+  | "greeting"
+  | "thanks"
+  | "pricing"
+  | "repair_pricing"
+  | "capability"
+  | "repair"
+  | "services"
+  | "contact"
+  | "pc_no_power"
+  | "virus"
+  | "network"
+  | "printer"
+  | "email"
+  | "slow_pc"
+  | "device"
+  | "general";
+
+function detectIssueTopic(message: string): ReplyTopic | null {
   const text = message.toLowerCase();
 
-  if (text.includes("price") || text.includes("cost") || text.includes("quote")) {
-    return "Pricing depends on the service and work required. Complete a booking and we’ll contact you with clear next steps.";
+  if (noPowerPattern.test(text) && devicePattern.test(text)) return "pc_no_power";
+  if (noPowerPattern.test(text)) return "pc_no_power";
+  if (/\b(virus|malware|hacked|ransomware|spyware)\b/.test(text)) return "virus";
+  if (/\b(wifi|wi-fi|internet|network|router|broadband)\b/.test(text)) return "network";
+  if (/\b(printer|printing)\b/.test(text)) return "printer";
+  if (/\b(email|outlook|gmail)\b/.test(text)) return "email";
+  if (/\b(slow|freezing|frozen|lagging)\b/.test(text) && devicePattern.test(text)) return "slow_pc";
+  if (devicePattern.test(text)) return "device";
+  return null;
+}
+
+function replyForIssueTopic(
+  topic: ReplyTopic,
+  { asksPrice }: { asksPrice: boolean },
+) {
+  switch (topic) {
+    case "pc_no_power":
+      return asksPrice
+        ? "Yes, we repair PCs and desktops that won’t turn on. We’d need to diagnose it first — remote support often starts from $99, and on-site repairs are quoted after we check the machine."
+        : "Yes, we can help with that. A desktop that won’t turn on is often a power, connection, or hardware issue — our technicians can diagnose and fix it.";
+    case "virus":
+      return asksPrice
+        ? "Yes, we remove viruses and malware. Cost depends on how infected the machine is — remote cleanup often starts from $99, and we’ll confirm before any work."
+        : "Yes, we can help remove viruses and malware and get your computer running safely again.";
+    case "network":
+      return asksPrice
+        ? "Yes, we fix Wi‑Fi and internet issues. Pricing depends on whether it’s a quick remote fix or an on-site visit — our team will quote before starting."
+        : "Yes, we troubleshoot Wi‑Fi, router, and internet connection problems for homes and businesses.";
+    case "printer":
+      return "Yes, we help with printer setup, connection issues, and driver problems.";
+    case "email":
+      return "Yes, we can help with email setup and issues on Outlook, Gmail, and other accounts.";
+    case "slow_pc":
+      return asksPrice
+        ? "Yes, we can speed up slow PCs and laptops. We’ll check what’s causing it and quote before any repair — remote tune-ups often start from $99."
+        : "Yes, slow computers are something we fix all the time — often it’s storage, startup programs, or malware.";
+    case "device":
+      return asksPrice
+        ? "Yes, we repair PCs, Macs, laptops, and desktops. The cost depends on the fault — we’ll give you a clear quote after a quick assessment."
+        : "Yes, we repair PCs, Macs, laptops, and desktops for homes and businesses.";
+    default:
+      return null;
+  }
+}
+
+function followUpVariant(topic: ReplyTopic | null) {
+  if (topic === "pc_no_power" || topic === "device" || topic === "repair") {
+    return "Yes, we definitely handle issues like that. Say book when you’re ready and I’ll take your details for a callback.";
+  }
+  return "Yes, that’s something we can help with. Say book when you’re ready and I’ll pass your details to our team.";
+}
+
+function buildBotReply(
+  message: string,
+  context: { lastTopic?: ReplyTopic | null; lastReply?: string | null } = {},
+) {
+  const text = message.toLowerCase().trim();
+  const asksPrice = pricingPattern.test(text);
+  const asksRepair = repairPattern.test(text);
+  const asksCapability = capabilityPattern.test(text);
+  const asksServices = servicesPattern.test(text) || text === "how much will it cost?";
+  const asksContact = contactPattern.test(text) && !asksRepair && !asksPrice;
+  const issueTopic = detectIssueTopic(message) || context.lastTopic || null;
+
+  let replyText = "";
+  let topic: ReplyTopic = issueTopic || "general";
+
+  if (/^(hi|hello|hey|good morning|good afternoon|good evening)\b/.test(text) && text.length < 50) {
+    return { text: "Hi! How can I help you today?", topic: "greeting" as const };
   }
 
-  if (
-    text.includes("call") ||
-    text.includes("phone") ||
-    text.includes("email") ||
-    text.includes("contact")
-  ) {
-    return `Call ${ORCA_PHONE_DISPLAY} or email ${ORCA_EMAIL} and our friendly team will help you.`;
+  if (text.includes("thank")) {
+    return { text: "You’re very welcome!", topic: "thanks" as const };
   }
 
-  if (
-    text.includes("service") ||
-    text.includes("repair") ||
-    text.includes("computer") ||
-    text.includes("support")
-  ) {
-    return "We help with PC and Mac repairs, internet and networking, virus removal, email, printers, data recovery, Smart TV setup, broadband, managed IT, cloud services, websites and more.";
+  if (asksRepair && asksPrice) {
+    const issueReply = issueTopic ? replyForIssueTopic(issueTopic, { asksPrice: true }) : null;
+    replyText =
+      issueReply ||
+      "Yes, we can repair that. Pricing depends on the fault — remote support often starts from $99, and we’ll give you a clear quote before any on-site work.";
+    topic = issueTopic || "repair_pricing";
+  } else if (asksPrice) {
+    replyText =
+      "Pricing depends on the job. Remote support often starts from $99, and on-site or hardware repairs are quoted after we assess the issue.";
+    topic = "pricing";
+  } else if (asksCapability || /\b(will you do|can you do|do you do)\b/.test(text)) {
+    if (issueTopic && !detectIssueTopic(message)) {
+      replyText =
+        "Yes, absolutely — we can help with that. Say book when you’re ready and I’ll pass your details to our team.";
+      topic = issueTopic;
+    } else {
+      const issueReply = issueTopic ? replyForIssueTopic(issueTopic, { asksPrice: false }) : null;
+      replyText =
+        issueReply ||
+        "Yes, absolutely — that’s the kind of work we do. Our team can talk through the next steps with you.";
+      topic = issueTopic || "capability";
+    }
+  } else if (issueTopic) {
+    const issueReply = replyForIssueTopic(issueTopic, { asksPrice });
+    if (issueReply) {
+      replyText = issueReply;
+      topic = issueTopic;
+    }
+  } else if (asksRepair) {
+    replyText =
+      "Yes, we repair PCs, Macs, laptops, printers, networks, and more. Tell me what’s going wrong and I can point you in the right direction.";
+    topic = "repair";
+  } else if (asksServices || text.includes("what services do you offer?")) {
+    replyText =
+      "We help with PC and Mac repairs, internet and networking, virus removal, email, printers, data recovery, Smart TV setup, broadband, managed IT, cloud services, websites and more.";
+    topic = "services";
+  } else if (asksContact || text.includes("can i speak to someone?")) {
+    replyText = `Call ${ORCA_PHONE_DISPLAY} or email ${ORCA_EMAIL} and our friendly team will help you.`;
+    topic = "contact";
+  } else {
+    replyText = `Tell me a bit more about the problem, or say book and I’ll take your details for a callback. You can also call ${ORCA_PHONE_DISPLAY}.`;
+    topic = context.lastTopic || "general";
   }
 
-  return `Thanks for your message. You can make a booking here, call ${ORCA_PHONE_DISPLAY}, or email ${ORCA_EMAIL}.`;
+  if (context.lastReply && context.lastReply === replyText) {
+    replyText = followUpVariant(topic);
+  }
+
+  return { text: replyText, topic };
 }
 
 function validationError(field: LeadField, value: string) {
@@ -179,6 +312,10 @@ export function OrcaChatbot() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContextRef = useRef<{ lastTopic: ReplyTopic | null; lastReply: string | null }>({
+    lastTopic: null,
+    lastReply: null,
+  });
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -224,6 +361,12 @@ export function OrcaChatbot() {
     );
   }
 
+  async function replyWithContext(message: string) {
+    const result = buildBotReply(message, chatContextRef.current);
+    chatContextRef.current = { lastTopic: result.topic, lastReply: result.text };
+    await replyAsBot(result.text);
+  }
+
   async function selectQuickQuestion(question: string) {
     if (isTyping || isSubmitting) return;
 
@@ -233,7 +376,7 @@ export function OrcaChatbot() {
     }
 
     addMessages({ from: "user", text: question });
-    await replyAsBot(generalReply(question));
+    await replyWithContext(question);
   }
 
   async function saveLead(completedLead: Lead) {
@@ -306,7 +449,7 @@ export function OrcaChatbot() {
     }
 
     addMessages({ from: "user", text: answer });
-    await replyAsBot(generalReply(answer));
+    await replyWithContext(answer);
   }
 
   const currentQuestion = bookingStep === null ? null : bookingQuestions[bookingStep];
