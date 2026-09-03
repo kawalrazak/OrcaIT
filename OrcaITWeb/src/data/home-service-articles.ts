@@ -343,8 +343,8 @@ export const homeServiceArticles: HomeServiceArticle[] = [
     ],
     eyebrow: "Home IT Support",
     hero: "It’s hard to get by without email. Orca IT helps Australian homes set up and troubleshoot email so sending, receiving and syncing work again.",
-    image: "https://images.unsplash.com/photo-1586281380349-632531db7ed4?auto=format&fit=crop&w=900&q=80",
-    imageAlt: "Laptop open with email and messaging apps on screen",
+    image: "https://images.unsplash.com/photo-1516387938699-a93567ec703e?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Person checking email on a laptop and phone at a bright desk",
     secondaryImage: "https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?auto=format&fit=crop&w=900&q=80",
     secondaryImageAlt: "Person setting up email on a laptop at a bright desk",
     intro: [
