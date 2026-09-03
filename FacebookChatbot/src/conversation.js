@@ -23,12 +23,17 @@ export const bookingQuestions = [
     quickReplies: ["Home", "Business"],
   },
   {
+    field: "visitType",
+    prompt: "Do you need remote/online support, or someone to visit on-site?",
+    quickReplies: ["Remote", "On-site"],
+  },
+  {
     field: "email",
     prompt: "What is your email address?",
   },
   {
     field: "suburb",
-    prompt: "Which suburb are you located in?",
+    prompt: "Which suburb are you located in? (needed for on-site visits)",
   },
   {
     field: "issue",
@@ -53,10 +58,32 @@ export const emptyLead = {
   name: "",
   phone: "",
   email: "",
+  visitType: "",
   suburb: "",
   issue: "",
   preferredContactTime: "",
 };
+
+export function isRemoteVisit(lead) {
+  return String(lead?.visitType || "")
+    .trim()
+    .toLowerCase()
+    .startsWith("remote");
+}
+
+/** Next question index after answering currentIndex — skips suburb for remote jobs. */
+export function nextBookingStep(currentIndex, lead) {
+  let next = currentIndex + 1;
+  while (next < bookingQuestions.length) {
+    const field = bookingQuestions[next].field;
+    if (field === "suburb" && isRemoteVisit(lead)) {
+      next += 1;
+      continue;
+    }
+    return next;
+  }
+  return next;
+}
 
 function pickOne(items) {
   return items[Math.floor(Math.random() * items.length)];
@@ -114,6 +141,10 @@ export function bookingAcknowledgement(field, value) {
       return firstName ? `Lovely to meet you, ${firstName}.` : "Thanks for that.";
     case "supportFor":
       return value === "Home" ? "Got it — this is for home." : "Got it — this is for your business.";
+    case "visitType":
+      return value === "Remote" || value.toLowerCase().startsWith("remote")
+        ? "Perfect — remote support, so we won’t need your address."
+        : "Got it — on-site visit. I’ll need your suburb next.";
     case "email":
       return "Perfect, email noted.";
     case "suburb":
@@ -454,6 +485,21 @@ export function validationError(field, value) {
       return "No worries — is this for home or business?";
     }
   }
+  if (field === "visitType") {
+    const normalised = value.trim().toLowerCase();
+    if (
+      !(
+        normalised.includes("remote") ||
+        normalised.includes("online") ||
+        normalised.includes("on-site") ||
+        normalised.includes("onsite") ||
+        normalised.includes("on site") ||
+        normalised === "visit"
+      )
+    ) {
+      return "Just checking — is this remote/online support, or on-site?";
+    }
+  }
   return null;
 }
 
@@ -468,6 +514,18 @@ export function normaliseField(field, value) {
     const normalised = trimmed.toLowerCase();
     if (normalised === "home") return "Home";
     if (normalised === "business") return "Business";
+  }
+  if (field === "visitType") {
+    const normalised = trimmed.toLowerCase();
+    if (normalised.includes("remote") || normalised.includes("online")) return "Remote";
+    if (
+      normalised.includes("on-site") ||
+      normalised.includes("onsite") ||
+      normalised.includes("on site") ||
+      normalised === "visit"
+    ) {
+      return "On-site";
+    }
   }
   return trimmed;
 }

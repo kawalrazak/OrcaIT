@@ -6,6 +6,7 @@ const columns = [
   "name",
   "phone",
   "email",
+  "visitType",
   "suburb",
   "issue",
   "preferredContactTime",
@@ -69,7 +70,8 @@ async function notifyStaff(lead) {
         `Name: ${lead.name}`,
         `Email: ${lead.email}`,
         `Phone: ${lead.phone}`,
-        `Suburb: ${lead.suburb}`,
+        `Visit type: ${lead.visitType || "Not specified"}`,
+        `Suburb: ${lead.suburb || (String(lead.visitType || "").toLowerCase().startsWith("remote") ? "Not needed (remote)" : "Not provided")}`,
         `Support for: ${lead.supportFor}`,
         `Existing customer: ${lead.existingCustomer}`,
         `Preferred contact time: ${lead.preferredContactTime}`,
@@ -85,7 +87,9 @@ async function notifyStaff(lead) {
 }
 
 export async function saveLead(lead) {
-  const cleaned = Object.fromEntries(columns.map((column) => [column, lead[column].trim()]));
+  const cleaned = Object.fromEntries(
+    columns.map((column) => [column, String(lead[column] || "").trim()]),
+  );
 
   const saved = await forwardLeadToCrm({
     source: "facebook",

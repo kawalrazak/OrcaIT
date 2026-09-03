@@ -17,6 +17,7 @@ type Lead = {
   name: string;
   phone: string;
   email: string;
+  visitType: string;
   suburb: string;
   issue: string;
   preferredContactTime: string;
@@ -31,6 +32,7 @@ const emptyLead: Lead = {
   name: "",
   phone: "",
   email: "",
+  visitType: "",
   suburb: "",
   issue: "",
   preferredContactTime: "",
@@ -42,11 +44,13 @@ const bookingQuestions: Array<{
   prompt: string;
   placeholder: string;
   inputMode?: "email" | "tel" | "text";
+  quickReplies?: string[];
 }> = [
   {
     field: "existingCustomer",
     prompt: "Have you used Orca IT before?",
     placeholder: "Please answer yes or no",
+    quickReplies: ["Yes", "No"],
   },
   {
     field: "phone",
@@ -63,6 +67,13 @@ const bookingQuestions: Array<{
     field: "supportFor",
     prompt: "Is this booking for your home or your business?",
     placeholder: "Please answer home or business",
+    quickReplies: ["Home", "Business"],
+  },
+  {
+    field: "visitType",
+    prompt: "Do you need remote/online support, or someone to visit on-site?",
+    placeholder: "Please answer remote or on-site",
+    quickReplies: ["Remote", "On-site"],
   },
   {
     field: "email",
@@ -72,7 +83,7 @@ const bookingQuestions: Array<{
   },
   {
     field: "suburb",
-    prompt: "Which suburb are you located in?",
+    prompt: "Which suburb are you located in? (needed for on-site visits)",
     placeholder: "Enter your suburb",
   },
   {
@@ -86,6 +97,49 @@ const bookingQuestions: Array<{
     placeholder: "For example: weekdays after 3pm",
   },
 ];
+
+function isRemoteVisit(lead: Pick<Lead, "visitType">) {
+  return lead.visitType.trim().toLowerCase().startsWith("remote");
+}
+
+function nextBookingStep(currentIndex: number, lead: Lead) {
+  let next = currentIndex + 1;
+  while (next < bookingQuestions.length) {
+    if (bookingQuestions[next].field === "suburb" && isRemoteVisit(lead)) {
+      next += 1;
+      continue;
+    }
+    return next;
+  }
+  return next;
+}
+
+function normaliseField(field: LeadField, value: string) {
+  const trimmed = value.trim();
+  if (field === "existingCustomer") {
+    const normalised = trimmed.toLowerCase();
+    if (normalised === "y" || normalised === "yes") return "Yes";
+    if (normalised === "n" || normalised === "no") return "No";
+  }
+  if (field === "supportFor") {
+    const normalised = trimmed.toLowerCase();
+    if (normalised === "home") return "Home";
+    if (normalised === "business") return "Business";
+  }
+  if (field === "visitType") {
+    const normalised = trimmed.toLowerCase();
+    if (normalised.includes("remote") || normalised.includes("online")) return "Remote";
+    if (
+      normalised.includes("on-site") ||
+      normalised.includes("onsite") ||
+      normalised.includes("on site") ||
+      normalised === "visit"
+    ) {
+      return "On-site";
+    }
+  }
+  return trimmed;
+}
 
 const quickQuestions = [
   "Book an appointment",
@@ -263,6 +317,33 @@ function validationError(field: LeadField, value: string) {
   if (field === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())) {
     return "Please enter a valid email address.";
   }
+  if (field === "existingCustomer") {
+    const normalised = value.trim().toLowerCase();
+    if (!["yes", "no", "y", "n"].includes(normalised)) {
+      return "Please answer yes or no.";
+    }
+  }
+  if (field === "supportFor") {
+    const normalised = value.trim().toLowerCase();
+    if (!["home", "business"].includes(normalised)) {
+      return "Please answer home or business.";
+    }
+  }
+  if (field === "visitType") {
+    const normalised = value.trim().toLowerCase();
+    if (
+      !(
+        normalised.includes("remote") ||
+        normalised.includes("online") ||
+        normalised.includes("on-site") ||
+        normalised.includes("onsite") ||
+        normalised.includes("on site") ||
+        normalised === "visit"
+      )
+    ) {
+      return "Please answer remote or on-site.";
+    }
+  }
   return null;
 }
 
@@ -419,11 +500,16 @@ export function OrcaChatbot() {
       return;
     }
 
-    const updatedLead = { ...lead, [question.field]: answer };
+    const normalised = normaliseField(question.field, answer);
+    const updatedLead = {
+      ...lead,
+      [question.field]: normalised,
+      ...(question.field === "visitType" && normalised === "Remote" ? { suburb: "" } : {}),
+    };
     setLead(updatedLead);
     addMessages({ from: "user", text: answer });
 
-    const nextStep = bookingStep + 1;
+    const nextStep = nextBookingStep(bookingStep, updatedLead);
     if (nextStep < bookingQuestions.length) {
       setBookingStep(nextStep);
       await replyAsBot(bookingQuestions[nextStep].prompt);
@@ -514,9 +600,9 @@ export function OrcaChatbot() {
               <div ref={messagesEndRef} />
             </div>
 
-            {(bookingStep === 0 || bookingStep === 3) && !isTyping && (
+            {currentQuestion?.quickReplies && !isTyping ? (
               <div className="ml-13 mt-4 flex flex-wrap gap-2">
-                {(bookingStep === 0 ? ["Yes", "No"] : ["Home", "Business"]).map((answer) => (
+                {currentQuestion.quickReplies.map((answer) => (
                   <button
                     key={answer}
                     type="button"
@@ -536,7 +622,7 @@ export function OrcaChatbot() {
                   </Link>
                 ) : null}
               </div>
-            )}
+            ) : null}
 
             {bookingStep === null && !isSubmitting && !isTyping && (
               <div className="mt-6 flex flex-wrap gap-2">

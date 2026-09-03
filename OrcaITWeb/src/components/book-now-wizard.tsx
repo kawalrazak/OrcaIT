@@ -90,12 +90,16 @@ export function BookNowWizard() {
     setError("");
   }
 
+  function isRemoteService(service: BookableService | null) {
+    return service?.id === "remote-45";
+  }
+
   function goBack() {
     setError("");
     if (step === "service") setStep("postcode");
     else if (step === "datetime") setStep("service");
     else if (step === "address") setStep("datetime");
-    else if (step === "details") setStep("address");
+    else if (step === "details") setStep(isRemoteService(booking.service) ? "datetime" : "address");
   }
 
   function continueFromPostcode() {
@@ -121,6 +125,13 @@ export function BookNowWizard() {
   function continueFromDateTime() {
     if (!booking.date || !booking.time || !booking.staff) {
       setError("Please select a date, time and technician.");
+      return;
+    }
+    // Remote/online support does not need a physical address.
+    if (isRemoteService(booking.service)) {
+      update("unit", "");
+      update("address", "");
+      setStep("details");
       return;
     }
     setStep("address");
@@ -164,8 +175,10 @@ export function BookNowWizard() {
           dateLabel: formatBookingDate(booking.date),
           time: booking.time,
           staffName: booking.staff.name,
-          unit: booking.unit,
-          address: booking.address,
+          unit: isRemoteService(booking.service) ? "" : booking.unit,
+          address: isRemoteService(booking.service)
+            ? `Remote support — postcode ${booking.postcode}`
+            : booking.address,
           firstName: booking.firstName,
           lastName: booking.lastName,
           company: booking.company,
@@ -478,9 +491,7 @@ export function BookNowWizard() {
           <div>
             <h2 className="text-2xl font-extrabold text-brand-navy">Enter Your Address</h2>
             <p className="mt-2 text-slate-600">
-              {booking.service?.id === "remote-45"
-                ? "This is a remote support booking — we'll call you at the scheduled time. Please provide your billing address below."
-                : "Please provide the address where our technician should attend."}
+              Please provide the address where our technician should attend.
             </p>
 
             <label className="mt-6 block">

@@ -124,6 +124,14 @@ function buildLeadFromWebsite(body = {}) {
   const preferredContactTime = asString(body.preferredContactTime);
   const suburb = asString(body.suburb || body.address);
   const issue = asString(body.issue || body.issueDescription || body.customerIssue);
+  const visitType = asString(body.visitType);
+  const isRemote =
+    visitType.toLowerCase().startsWith('remote') ||
+    visitType.toLowerCase().includes('online');
+  const isOnsite =
+    visitType.toLowerCase().includes('on-site') ||
+    visitType.toLowerCase().includes('onsite') ||
+    visitType.toLowerCase().includes('on site');
 
   return {
     id: randomUUID(),
@@ -140,7 +148,7 @@ function buildLeadFromWebsite(body = {}) {
     callDate,
     issueType: supportFor || 'Computer/Laptop',
     issueDescription: issue || 'Website enquiry',
-    address: suburb || undefined,
+    address: suburb || (isRemote ? 'Remote support' : undefined),
     comment: [
       `Source: ${
         source === 'facebook'
@@ -150,6 +158,7 @@ function buildLeadFromWebsite(body = {}) {
             : 'Website chat'
       }`,
       supportFor && `Support for: ${supportFor}`,
+      visitType && `Visit type: ${visitType}`,
       existingCustomer && `Existing customer: ${existingCustomer}`,
       preferredContactTime && `Preferred contact: ${preferredContactTime}`,
     ]
@@ -163,7 +172,7 @@ function buildLeadFromWebsite(body = {}) {
     leadUser: 'Website',
     assignedClientId: '',
     assignedClientName: '',
-    isOnsite: false,
+    isOnsite: isOnsite && !isRemote,
     outcome: '',
     sentStatus: 'PENDING',
     sentToCustomer: false,

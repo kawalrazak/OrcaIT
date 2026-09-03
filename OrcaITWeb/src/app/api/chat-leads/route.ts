@@ -9,33 +9,51 @@ type Lead = {
   name: string;
   phone: string;
   email: string;
+  visitType: string;
   suburb: string;
   issue: string;
   preferredContactTime: string;
   website?: string;
 };
 
-const columns: Array<keyof Omit<Lead, "website">> = [
+const requiredColumns: Array<keyof Omit<Lead, "website" | "suburb" | "visitType">> = [
   "supportFor",
   "existingCustomer",
   "name",
   "phone",
   "email",
-  "suburb",
   "issue",
   "preferredContactTime",
 ];
+
+function isRemoteVisit(visitType: string) {
+  return visitType.trim().toLowerCase().startsWith("remote");
+}
 
 function isValidLead(value: unknown): value is Lead {
   if (!value || typeof value !== "object") return false;
 
   const lead = value as Record<string, unknown>;
-  return columns.every(
+  const requiredOk = requiredColumns.every(
     (column) =>
       typeof lead[column] === "string" &&
       lead[column].trim().length > 0 &&
       lead[column].length <= 1000,
   );
+  if (!requiredOk) return false;
+
+  const visitType = typeof lead.visitType === "string" ? lead.visitType.trim() : "";
+  const suburb = typeof lead.suburb === "string" ? lead.suburb.trim() : "";
+
+  if (visitType.length > 1000 || suburb.length > 1000) return false;
+
+  // Suburb is required only for on-site / non-remote visits.
+  if (visitType && !isRemoteVisit(visitType) && !suburb) return false;
+
+  // Older clients may omit visitType — then suburb stays required.
+  if (!visitType && !suburb) return false;
+
+  return true;
 }
 
 async function sendStaffLeadEmail(lead: Lead, source: string) {
@@ -51,6 +69,12 @@ async function sendStaffLeadEmail(lead: Lead, source: string) {
       ? `New chat enquiry — ${lead.name}`
       : `New website enquiry — ${lead.name}`;
 
+  const suburbLabel = lead.suburb
+    ? lead.suburb
+    : isRemoteVisit(lead.visitType)
+      ? "Not needed (remote)"
+      : "Not provided";
+
   const result = await sendMail({
     to: getNotifyEmail(),
     replyTo: lead.email,
@@ -62,7 +86,8 @@ async function sendStaffLeadEmail(lead: Lead, source: string) {
       `Name: ${lead.name}`,
       `Email: ${lead.email}`,
       `Phone: ${lead.phone}`,
-      `Suburb: ${lead.suburb}`,
+      `Visit type: ${lead.visitType || "Not specified"}`,
+      `Suburb: ${suburbLabel}`,
       `Support for: ${lead.supportFor}`,
       `Existing customer: ${lead.existingCustomer}`,
       `Preferred contact time: ${lead.preferredContactTime}`,
@@ -79,7 +104,8 @@ async function sendStaffLeadEmail(lead: Lead, source: string) {
           <tr><td style="padding:6px 0;font-weight:bold">Name</td><td>${lead.name}</td></tr>
           <tr><td style="padding:6px 0;font-weight:bold">Email</td><td><a href="mailto:${lead.email}">${lead.email}</a></td></tr>
           <tr><td style="padding:6px 0;font-weight:bold">Phone</td><td><a href="tel:${lead.phone}">${lead.phone}</a></td></tr>
-          <tr><td style="padding:6px 0;font-weight:bold">Suburb</td><td>${lead.suburb}</td></tr>
+          <tr><td style="padding:6px 0;font-weight:bold">Visit type</td><td>${lead.visitType || "Not specified"}</td></tr>
+          <tr><td style="padding:6px 0;font-weight:bold">Suburb</td><td>${suburbLabel}</td></tr>
           <tr><td style="padding:6px 0;font-weight:bold">Support for</td><td>${lead.supportFor}</td></tr>
           <tr><td style="padding:6px 0;font-weight:bold">Existing customer</td><td>${lead.existingCustomer}</td></tr>
           <tr><td style="padding:6px 0;font-weight:bold">Preferred contact</td><td>${lead.preferredContactTime}</td></tr>
@@ -122,6 +148,7 @@ export async function POST(request: Request) {
       name: lead.name.trim(),
       phone: lead.phone.trim(),
       email: lead.email.trim(),
+      visitType: (lead.visitType || "").trim(),
       suburb: lead.suburb.trim(),
       issue: lead.issue.trim(),
       preferredContactTime: lead.preferredContactTime.trim(),

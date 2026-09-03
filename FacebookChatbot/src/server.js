@@ -18,6 +18,7 @@ import {
   isExistingBookingChoice,
   isNewBookingChoice,
   isQuickQuestion,
+  nextBookingStep,
   normaliseField,
   quickQuestions,
   returningUserGreeting,
@@ -224,7 +225,11 @@ async function handleMessage(psid, text) {
     }
 
     session.lead[question.field] = normaliseField(question.field, answer);
-    const nextStep = session.bookingStep + 1;
+    if (question.field === "visitType" && session.lead.visitType === "Remote") {
+      session.lead.suburb = "";
+    }
+
+    const nextStep = nextBookingStep(session.bookingStep, session.lead);
 
     if (nextStep < bookingQuestions.length) {
       session.bookingStep = nextStep;
