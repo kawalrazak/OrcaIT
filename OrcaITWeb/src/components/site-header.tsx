@@ -3,16 +3,26 @@ import Link from "next/link";
 import { ChevronDown, Menu, Phone } from "lucide-react";
 import { slugifyTitle } from "@/components/marketing-page-shell";
 import { ORCA_PHONE_DISPLAY, ORCA_PHONE_TEL } from "@/data/contact";
+import { homeServiceArticles } from "@/data/home-service-articles";
 import { servicePageLinks } from "@/data/service-pages";
 import { serviceCategories } from "@/data/site-content";
 
 const homeSupport = serviceCategories.find((category) => category.id === "home-it-support");
 
+function homeArticleHref(title: string) {
+  const match = homeServiceArticles.find(
+    (article) =>
+      article.shortTitle.toLowerCase() === title.toLowerCase() ||
+      slugifyTitle(article.shortTitle) === slugifyTitle(title),
+  );
+  return match ? `/what-we-do/${match.slug}` : `/what-we-do#${slugifyTitle(title)}`;
+}
+
 const homeSupportLinks = [
   { title: "Home IT Support", href: "/what-we-do" },
   ...(homeSupport?.services.map((service) => ({
     title: service.title,
-    href: `/what-we-do#${slugifyTitle(service.title)}`,
+    href: homeArticleHref(service.title),
   })) ?? []),
 ];
 
