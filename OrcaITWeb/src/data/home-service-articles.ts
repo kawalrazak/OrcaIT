@@ -7,6 +7,10 @@ export type HomeServiceArticle = {
   keywords: string[];
   eyebrow: string;
   hero: string;
+  image: string;
+  imageAlt: string;
+  secondaryImage: string;
+  secondaryImageAlt: string;
   intro: string[];
   servicesTitle: string;
   problemsTitle: string;
@@ -43,6 +47,10 @@ export const homeServiceArticles: HomeServiceArticle[] = [
     ],
     eyebrow: "Home IT Support",
     hero: "We know how frustrating computer problems can be. Whether the issue is big or small, Orca IT can help with desktop PC repairs and support for Australian homes.",
+    image: "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Desktop computer on a desk ready for repair",
+    secondaryImage: "https://images.unsplash.com/photo-1587831990711-23ca6441447b?auto=format&fit=crop&w=900&q=80",
+    secondaryImageAlt: "Computer technician working on a PC",
     intro: [
       "Need help with a PC that won’t turn on, runs slowly, needs a hardware upgrade, or keeps crashing? You’ll find a practical fix with Orca IT desktop PC repairs. Whether your computer is used for work-from-home, study or everyday family life, our technicians diagnose the problem clearly and recommend a tailored solution.",
       "Taking care of troublesome tech is what we do best. We can help remotely for many software issues, or arrange on-site support when hardware needs hands-on attention — so you can get back online as soon as possible.",
@@ -137,6 +145,10 @@ export const homeServiceArticles: HomeServiceArticle[] = [
     ],
     eyebrow: "Home IT Support",
     hero: "Slow Wi-Fi and dropouts are frustrating. Orca IT helps Australian homes set up reliable internet and home networks that actually cover the rooms you use.",
+    image: "https://images.unsplash.com/photo-1544197150-b99a580bb7a2?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Home Wi-Fi router and network equipment",
+    secondaryImage: "https://images.unsplash.com/photo-1606904825846-647eb07f5be2?auto=format&fit=crop&w=900&q=80",
+    secondaryImageAlt: "Person using a laptop on home Wi-Fi",
     intro: [
       "Whether you need a new router configured, help with devices that won’t connect, or a home network that stops dropping out during video calls, Orca IT can provide practical internet and networking support.",
       "A stable wireless network lets you share internet, printers and files across the household. We’ll set things up properly and explain how it works in simple language.",
@@ -232,6 +244,10 @@ export const homeServiceArticles: HomeServiceArticle[] = [
     ],
     eyebrow: "Home IT Support",
     hero: "Just like people get sick, computers can catch viruses too. If your PC is slow, showing pop-ups, or sending emails you never wrote, Orca IT can help.",
+    image: "https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Cyber security lock concept on a laptop",
+    secondaryImage: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=900&q=80",
+    secondaryImageAlt: "Digital security and malware protection concept",
     intro: [
       "Virus, spyware and malware infections can steal time, damage trust in your computer, and put personal information at risk. Orca IT provides careful malware cleanup for Australian homes.",
       "We remove unwanted software, repair common browser and system damage where possible, and put practical protections in place so you’re safer going forward.",
@@ -327,6 +343,10 @@ export const homeServiceArticles: HomeServiceArticle[] = [
     ],
     eyebrow: "Home IT Support",
     hero: "It’s hard to get by without email. Orca IT helps Australian homes set up and troubleshoot email so sending, receiving and syncing work again.",
+    image: "https://images.unsplash.com/photo-1596526131083-e8c633c838d2?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Email inbox on a laptop screen",
+    secondaryImage: "https://images.unsplash.com/photo-1557205476-486c8e1f4d2d?auto=format&fit=crop&w=900&q=80",
+    secondaryImageAlt: "Person checking email on a computer",
     intro: [
       "Whether you’re configuring a new laptop, recovering access after a password change, or stuck with Outlook errors, our technicians can help get email reliable again.",
       "We’ll walk you through setup on computers and phones, fix common send/receive issues, and leave you confident checking and sending messages.",
@@ -421,6 +441,10 @@ export const homeServiceArticles: HomeServiceArticle[] = [
     ],
     eyebrow: "Home IT Support",
     hero: "Just bought a new printer, or stuck with one that says offline? Orca IT helps Australian homes set printers up properly and explore the features you actually need.",
+    image: "https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Home office printer setup",
+    secondaryImage: "https://images.unsplash.com/photo-1565120130276-dfbd2e2f4b63?auto=format&fit=crop&w=900&q=80",
+    secondaryImageAlt: "Printer producing documents in an office",
     intro: [
       "Printers should make life easier, but wireless setup, drivers and scanning often create more frustration than the printing itself. Our technicians install and troubleshoot home printers clearly and patiently.",
       "We connect USB and Wi-Fi printers, get multiple household devices printing, and help with common scan and queue problems.",
@@ -515,6 +539,10 @@ export const homeServiceArticles: HomeServiceArticle[] = [
     ],
     eyebrow: "Home IT Support",
     hero: "Whether you use a MacBook or iMac at home, Orca IT provides friendly Mac support when performance drops, updates fail, or everyday Apple tools stop cooperating.",
+    image: "https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Apple MacBook on a desk",
+    secondaryImage: "https://images.unsplash.com/photo-1496181133206-80ce9b88a853?auto=format&fit=crop&w=900&q=80",
+    secondaryImageAlt: "Laptop open on a wooden table",
     intro: [
       "Macs are excellent machines, but they still need care — especially after years of files, apps and system updates. We help Australian home users troubleshoot Mac software issues and improve day-to-day reliability.",
       "From slowdowns and storage warnings to email, printers and migration help, we provide clear Apple-aware support without the jargon.",
@@ -609,6 +637,10 @@ export const homeServiceArticles: HomeServiceArticle[] = [
     ],
     eyebrow: "Home IT Support",
     hero: "That sinking feeling when files go missing is awful. If you think you’ve lost important documents or photos, Orca IT can help assess recovery options.",
+    image: "https://images.unsplash.com/photo-1597872200969-2b65d56bd16b?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Hard drive and computer storage components",
+    secondaryImage: "https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=900&q=80",
+    secondaryImageAlt: "Computer circuit board representing stored data",
     intro: [
       "Accidentally deleted folders, failing hard drives and computers that won’t boot can put precious family and work files at risk. We provide careful home data recovery support across Australia.",
       "We start with an assessment, explain what’s realistic, and prioritise the files that matter most — then help you set up better backups so it doesn’t happen again.",
@@ -703,6 +735,10 @@ export const homeServiceArticles: HomeServiceArticle[] = [
     ],
     eyebrow: "Home IT Support",
     hero: "A new Smart TV should make entertainment easier. Orca IT helps Australian homes connect TVs to Wi-Fi, install streaming apps and sort casting problems.",
+    image: "https://images.unsplash.com/photo-1593359677879-a4b92e8c8440?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Modern smart TV in a living room",
+    secondaryImage: "https://images.unsplash.com/photo-1461151304267-38535e780c79?auto=format&fit=crop&w=900&q=80",
+    secondaryImageAlt: "Living room entertainment setup with TV",
     intro: [
       "From first-time setup to buffering and app login issues, we make living-room technology simpler for the whole household.",
       "Whether you need Netflix and other apps installed, help connecting sound equipment, or a TV that refuses to join Wi-Fi, we can guide you through it clearly.",
@@ -797,6 +833,10 @@ export const homeServiceArticles: HomeServiceArticle[] = [
     ],
     eyebrow: "Home IT Support",
     hero: "Many tech problems can be fixed without a home visit. Orca IT provides remote and phone support so Australian households get expert help quickly and securely.",
+    image: "https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Support specialist helping a customer by phone",
+    secondaryImage: "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80",
+    secondaryImageAlt: "Remote tech support on a laptop",
     intro: [
       "If your issue is software, email, Wi-Fi settings or everyday computer troubleshooting, remote support is often the fastest path to a fix.",
       "We guide you step by step over the phone, or connect securely when screen sharing helps — always with your permission.",
@@ -891,6 +931,10 @@ export const homeServiceArticles: HomeServiceArticle[] = [
     ],
     eyebrow: "Home IT Support",
     hero: "Broadband problems can knock out your whole household. Orca IT helps Australian homes with modem setup, dropouts, speed issues and connection troubleshooting.",
+    image: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Global internet and connectivity concept",
+    secondaryImage: "https://images.unsplash.com/photo-1544197150-b99a580bb7a2?auto=format&fit=crop&w=900&q=80",
+    secondaryImageAlt: "Home broadband modem and router setup",
     intro: [
       "Sometimes the Wi-Fi looks guilty when the real issue is the broadband service, modem settings or how the connection enters your home. We help separate those problems clearly.",
       "From new modem setup to unstable connections, we improve the foundation your home internet depends on — then optimise the network that sits on top.",

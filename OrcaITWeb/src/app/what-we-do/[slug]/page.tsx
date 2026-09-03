@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Check, ChevronLeft, Mail, Phone } from "lucide-react";
@@ -38,6 +39,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       type: "article",
       locale: "en_AU",
       siteName: "Orca IT",
+      images: [{ url: article.image, alt: article.imageAlt }],
     },
   };
 }
@@ -118,6 +120,17 @@ export default async function HomeServiceArticlePage({ params }: PageProps) {
               <span className="text-brand-navy">{article.shortTitle}</span>
             </nav>
 
+            <div className="relative mt-8 overflow-hidden rounded-[1.75rem] border border-red-100 shadow-sm">
+              <Image
+                src={article.image}
+                alt={article.imageAlt}
+                width={900}
+                height={520}
+                className="h-56 w-full object-cover sm:h-72"
+                priority
+              />
+            </div>
+
             <div className="mt-8 space-y-5 text-lg leading-8 text-slate-700">
               {article.intro.map((paragraph) => (
                 <p key={paragraph.slice(0, 40)}>{paragraph}</p>
@@ -163,14 +176,25 @@ export default async function HomeServiceArticlePage({ params }: PageProps) {
         </section>
 
         <section className="bg-white py-16 lg:py-20">
-          <div className="mx-auto max-w-4xl px-5 lg:px-8">
-            <h2 className="text-3xl font-extrabold tracking-tight text-brand-navy sm:text-4xl">
-              {article.coverageTitle}
-            </h2>
-            <div className="mt-8 space-y-5 text-lg leading-8 text-slate-700">
-              {article.coverage.map((paragraph) => (
-                <p key={paragraph.slice(0, 40)}>{paragraph}</p>
-              ))}
+          <div className="mx-auto grid max-w-7xl items-center gap-10 px-5 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
+            <div>
+              <h2 className="text-3xl font-extrabold tracking-tight text-brand-navy sm:text-4xl">
+                {article.coverageTitle}
+              </h2>
+              <div className="mt-8 space-y-5 text-lg leading-8 text-slate-700">
+                {article.coverage.map((paragraph) => (
+                  <p key={paragraph.slice(0, 40)}>{paragraph}</p>
+                ))}
+              </div>
+            </div>
+            <div className="relative overflow-hidden rounded-[1.75rem] border border-red-100 shadow-sm">
+              <Image
+                src={article.secondaryImage}
+                alt={article.secondaryImageAlt}
+                width={800}
+                height={640}
+                className="h-64 w-full object-cover lg:h-80"
+              />
             </div>
           </div>
         </section>
@@ -262,12 +286,23 @@ export default async function HomeServiceArticlePage({ params }: PageProps) {
                 <Link
                   key={item.slug}
                   href={`/what-we-do/${item.slug}`}
-                  className="rounded-2xl border border-red-100 bg-white p-5 shadow-sm transition hover:border-brand-blue hover:shadow-md"
+                  className="overflow-hidden rounded-2xl border border-red-100 bg-white shadow-sm transition hover:border-brand-blue hover:shadow-md"
                 >
-                  <p className="font-extrabold text-brand-navy">{item.shortTitle}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    {item.hero.slice(0, 100)}…
-                  </p>
+                  <div className="relative h-28 w-full">
+                    <Image
+                      src={item.image}
+                      alt={item.imageAlt}
+                      fill
+                      className="object-cover"
+                      sizes="(max-width: 768px) 50vw, 25vw"
+                    />
+                  </div>
+                  <div className="p-5">
+                    <p className="font-extrabold text-brand-navy">{item.shortTitle}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">
+                      {item.hero.slice(0, 90)}…
+                    </p>
+                  </div>
                 </Link>
               ))}
             </div>

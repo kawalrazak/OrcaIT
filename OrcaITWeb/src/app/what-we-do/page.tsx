@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { MarketingPageShell, slugifyTitle } from "@/components/marketing-page-shell";
@@ -20,13 +21,12 @@ export const metadata: Metadata = {
   ],
 };
 
-function articleSlugForTitle(title: string) {
-  const match = homeServiceArticles.find(
+function articleForTitle(title: string) {
+  return homeServiceArticles.find(
     (article) =>
       article.shortTitle.toLowerCase() === title.toLowerCase() ||
       slugifyTitle(article.shortTitle) === slugifyTitle(title),
   );
-  return match?.slug ?? slugifyTitle(title);
 }
 
 export default function WhatWeDoPage() {
@@ -48,31 +48,45 @@ export default function WhatWeDoPage() {
             <h2 className="section-title">{homeSupport?.description}</h2>
             <p className="mt-5 leading-7 text-slate-600">
               Explore each service below for common problems, what’s included, FAQs and how to
-              book. Every guide is written to help you find the right fix faster.
+              get help. Every guide is written to help you find the right fix faster.
             </p>
           </div>
 
           <div className="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {homeSupport?.services.map(({ icon: Icon, title, copy, accent }) => {
-              const slug = articleSlugForTitle(title);
+              const article = articleForTitle(title);
+              const slug = article?.slug ?? slugifyTitle(title);
               return (
                 <Link
                   key={title}
                   href={`/what-we-do/${slug}`}
                   id={slugifyTitle(title)}
-                  className="group scroll-mt-28 rounded-[1.75rem] border border-red-100 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:border-brand-blue hover:shadow-lg"
+                  className="group scroll-mt-28 overflow-hidden rounded-[1.75rem] border border-red-100 bg-white shadow-sm transition hover:-translate-y-1 hover:border-brand-blue hover:shadow-lg"
                 >
-                  <span className={`inline-flex rounded-2xl p-3 ${accent}`}>
-                    <Icon className="size-6" />
-                  </span>
-                  <h3 className="mt-6 text-xl font-extrabold text-brand-navy group-hover:text-brand-blue">
-                    {title}
-                  </h3>
-                  <p className="mt-3 leading-7 text-slate-600">{copy}</p>
-                  <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-brand-blue">
-                    Read guide
-                    <ArrowRight className="size-4 transition group-hover:translate-x-1" />
-                  </span>
+                  {article ? (
+                    <div className="relative h-36 w-full">
+                      <Image
+                        src={article.image}
+                        alt={article.imageAlt}
+                        fill
+                        className="object-cover transition duration-300 group-hover:scale-[1.03]"
+                        sizes="(max-width: 768px) 100vw, 33vw"
+                      />
+                    </div>
+                  ) : null}
+                  <div className="p-7">
+                    <span className={`inline-flex rounded-2xl p-3 ${accent}`}>
+                      <Icon className="size-6" />
+                    </span>
+                    <h3 className="mt-6 text-xl font-extrabold text-brand-navy group-hover:text-brand-blue">
+                      {title}
+                    </h3>
+                    <p className="mt-3 leading-7 text-slate-600">{copy}</p>
+                    <span className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-brand-blue">
+                      Read guide
+                      <ArrowRight className="size-4 transition group-hover:translate-x-1" />
+                    </span>
+                  </div>
                 </Link>
               );
             })}
