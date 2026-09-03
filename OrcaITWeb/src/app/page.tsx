@@ -60,7 +60,8 @@ export default function HomePage() {
 
         <div className="relative mx-auto flex min-h-[70vh] max-w-7xl flex-col justify-center px-5 py-20 sm:min-h-[78vh] lg:px-8">
           <div className="mx-auto max-w-4xl text-center">
-            <p className="mb-4 inline-flex rounded-full bg-brand-fun px-4 py-1.5 text-xs font-black uppercase tracking-[0.16em] text-white">
+            <p className="mb-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-black uppercase tracking-[0.14em] text-brand-fun shadow-lg shadow-white/20">
+              <ShieldCheck className="size-5" />
               No solution, no fee
             </p>
             <h1 className="text-3xl font-extrabold leading-tight tracking-[-0.04em] text-white sm:text-5xl lg:text-6xl">
@@ -99,18 +100,41 @@ export default function HomePage() {
       </section>
 
       <section className="bg-white py-16 lg:py-20">
-        <div className="mx-auto grid max-w-6xl gap-8 px-5 sm:grid-cols-3 lg:px-8">
-          {promises.map(({ icon: Icon, title, copy }) => (
-            <article key={title} className="text-center">
-              <span className="mx-auto grid size-14 place-items-center rounded-2xl bg-brand-mist text-brand-fun">
-                <Icon className="size-7" />
-              </span>
-              <h2 className="mt-5 text-xl font-black uppercase tracking-wide text-brand-navy">
-                {title}
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-slate-600">{copy}</p>
-            </article>
-          ))}
+        <div className="mx-auto grid max-w-6xl gap-6 px-5 sm:grid-cols-3 lg:px-8">
+          {promises.map(({ icon: Icon, title, copy }) => {
+            const isHighlight = title === "No solution, no fee";
+            return (
+              <article
+                key={title}
+                className={`rounded-[1.75rem] p-7 text-center transition ${
+                  isHighlight
+                    ? "border-2 border-brand-fun bg-brand-fun/5 shadow-lg shadow-brand-fun/10"
+                    : "border border-red-100 bg-white shadow-sm"
+                }`}
+              >
+                <span
+                  className={`mx-auto grid size-14 place-items-center rounded-2xl ${
+                    isHighlight ? "bg-brand-fun text-white" : "bg-brand-mist text-brand-fun"
+                  }`}
+                >
+                  <Icon className="size-7" />
+                </span>
+                <h2
+                  className={`mt-5 text-xl font-black uppercase tracking-wide ${
+                    isHighlight ? "text-brand-fun" : "text-brand-navy"
+                  }`}
+                >
+                  {title}
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-slate-600">{copy}</p>
+                {isHighlight ? (
+                  <p className="mt-4 text-xs font-bold uppercase tracking-widest text-brand-fun/70">
+                    Our promise to you
+                  </p>
+                ) : null}
+              </article>
+            );
+          })}
         </div>
       </section>
 
