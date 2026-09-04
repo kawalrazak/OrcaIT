@@ -296,119 +296,113 @@ export function BookingForm() {
       ) : null}
 
       {step === "services" ? (
-        <div className="px-5 py-8 sm:px-8 sm:py-10">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-blue">
-                {visitMode === "remote" ? "Remote booking" : "On-site booking"}
-              </p>
-              <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">
-                Select services
-              </h2>
-              <p className="mt-2 text-slate-600">
-                {visitMode === "remote"
-                  ? "Showing remote services only — no site visit and no address later."
-                  : "Showing on-site services only — we’ll ask for your address next."}
-              </p>
+        <div>
+          <div className="px-5 py-8 sm:px-8 sm:py-10">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-blue">
+              {visitMode === "remote" ? "Remote form" : "On-site form"}
+            </p>
+            <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">
+              Select services
+            </h2>
+            <p className="mt-2 text-slate-600">
+              {visitMode === "remote"
+                ? "Remote services only — we will not ask for your address."
+                : "On-site services only — we will ask for your address next."}
+            </p>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => chooseVisitMode("remote")}
+                className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+                  visitMode === "remote"
+                    ? "bg-emerald-600 text-white"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                Switch to Remote form
+              </button>
+              <button
+                type="button"
+                onClick={() => chooseVisitMode("onsite")}
+                className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+                  visitMode === "onsite"
+                    ? "bg-brand-navy text-white"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                Switch to On-site form
+              </button>
             </div>
-            {selectedIds.length > 0 ? (
-              <p className="text-sm font-bold text-brand-navy">
-                {selectedIds.length} selected
+
+            <label className="relative mt-5 block">
+              <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search for a service"
+                className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 outline-none transition placeholder:text-slate-400 focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/15"
+              />
+            </label>
+
+            <p className="mt-6 text-sm font-bold text-brand-navy">Services</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {filteredServices.map((service) => {
+                const selected = selectedIds.includes(service.id);
+                return (
+                  <button
+                    key={service.id}
+                    type="button"
+                    onClick={() => toggleService(service.id)}
+                    className={`flex items-center gap-3 rounded-xl border px-4 py-4 text-left transition ${
+                      selected
+                        ? "border-brand-navy bg-brand-mist shadow-sm"
+                        : "border-slate-200 bg-white hover:border-brand-blue/50"
+                    }`}
+                  >
+                    <span
+                      className={`grid size-5 shrink-0 place-items-center rounded border ${
+                        selected
+                          ? "border-brand-navy bg-brand-navy text-white"
+                          : "border-slate-300 bg-white"
+                      }`}
+                    >
+                      {selected ? <Check className="size-3.5" strokeWidth={3} /> : null}
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-bold text-brand-navy">{service.label}</span>
+                      {service.hint ? (
+                        <span className="mt-1 block text-xs font-semibold text-slate-500">
+                          {service.hint}
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {filteredServices.length === 0 ? (
+              <p className="mt-8 text-center text-sm text-slate-500">
+                No services match your search. Try another keyword.
+              </p>
+            ) : null}
+
+            {error ? (
+              <p className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+                {error}
               </p>
             ) : null}
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => chooseVisitMode("remote")}
-              className={`rounded-full px-4 py-2 text-sm font-bold transition ${
-                visitMode === "remote"
-                  ? "bg-emerald-600 text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              }`}
-            >
-              Remote only
-            </button>
-            <button
-              type="button"
-              onClick={() => chooseVisitMode("onsite")}
-              className={`rounded-full px-4 py-2 text-sm font-bold transition ${
-                visitMode === "onsite"
-                  ? "bg-brand-navy text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              }`}
-            >
-              On-site only
-            </button>
-          </div>
-
-          <label className="relative mt-5 block">
-            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search for a service"
-              className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 outline-none transition placeholder:text-slate-400 focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/15"
-            />
-          </label>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {filteredServices.map((service) => {
-              const selected = selectedIds.includes(service.id);
-              return (
-                <button
-                  key={service.id}
-                  type="button"
-                  onClick={() => toggleService(service.id)}
-                  className={`flex items-start gap-3 rounded-xl border px-4 py-4 text-left transition ${
-                    selected
-                      ? "border-brand-navy bg-brand-mist shadow-sm"
-                      : "border-slate-200 bg-white hover:border-brand-blue/50"
-                  }`}
-                >
-                  <span
-                    className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded border ${
-                      selected
-                        ? "border-brand-navy bg-brand-navy text-white"
-                        : "border-slate-300 bg-white"
-                    }`}
-                  >
-                    {selected ? <Check className="size-3.5" strokeWidth={3} /> : null}
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block font-bold text-brand-navy">{service.label}</span>
-                    {service.hint ? (
-                      <span className="mt-1 block text-xs font-semibold text-slate-500">
-                        {service.hint}
-                      </span>
-                    ) : null}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
-          {filteredServices.length === 0 ? (
-            <p className="mt-8 text-center text-sm text-slate-500">
-              No services match your search. Try another keyword.
-            </p>
-          ) : null}
-
-          {error ? (
-            <p className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
-              {error}
-            </p>
-          ) : null}
-
-          <div className="mt-8 flex items-center justify-between gap-3 border-t border-slate-100 pt-6">
+          <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-8">
             <button
               type="button"
               onClick={() => {
                 setError("");
                 setStep("visit");
               }}
-              className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-6 py-3.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200"
+              className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-100"
             >
               <ArrowLeft className="size-4" />
               Back
@@ -416,7 +410,7 @@ export function BookingForm() {
             <button
               type="button"
               onClick={goToDetails}
-              className="inline-flex items-center gap-2 rounded-full bg-brand-navy px-7 py-3.5 text-sm font-bold text-white transition hover:bg-brand-ink"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-navy px-6 py-3 text-sm font-bold text-white transition hover:bg-brand-ink"
             >
               Next
               <ArrowRight className="size-4" />
@@ -426,168 +420,171 @@ export function BookingForm() {
       ) : null}
 
       {step === "details" ? (
-        <div className="px-5 py-8 sm:px-8 sm:py-10">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-blue">
-            {needsOnsite ? "On-site form" : "Remote form"}
-          </p>
-          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">
-            Your details
-          </h2>
-          <p className="mt-2 text-slate-600">
-            {needsOnsite
-              ? "On-site booking — please include your address so our technician can attend."
-              : "Remote booking — no site visit needed. We’ll contact you online or by phone."}
-          </p>
+        <div>
+          <div className="px-5 py-8 sm:px-8 sm:py-10">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-blue">
+              {needsOnsite ? "On-site form" : "Remote form"}
+            </p>
+            <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">
+              Your details
+            </h2>
+            <p className="mt-2 text-slate-600">
+              {needsOnsite
+                ? "On-site booking — please include your address so our technician can attend."
+                : "Remote booking — no site visit needed. We’ll contact you online or by phone."}
+            </p>
 
-          <div className="mt-6">
-            <p className="text-sm font-bold text-brand-navy">Selected services</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              {selectedServices.map((service) => (
-                <span
-                  key={service.id}
-                  className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700"
-                >
-                  <Check className="size-3.5 text-brand-navy" strokeWidth={3} />
-                  {service.label}
-                </span>
-              ))}
+            <div className="mt-6">
+              <p className="text-sm font-bold text-brand-navy">Selected services</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {selectedServices.map((service) => (
+                  <span
+                    key={service.id}
+                    className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700"
+                  >
+                    <Check className="size-3.5 text-brand-navy" strokeWidth={3} />
+                    {service.label}
+                  </span>
+                ))}
+              </div>
             </div>
-          </div>
 
-          <div className="mt-7 grid gap-4 sm:grid-cols-2">
-            <label className="relative block">
-              <User className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <input
-                value={firstName}
-                onChange={(event) => setFirstName(event.target.value)}
-                placeholder="First name (required)"
-                className={fieldClass}
-                autoComplete="given-name"
-              />
-            </label>
-            <label className="relative block">
-              <User className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <input
-                value={lastName}
-                onChange={(event) => setLastName(event.target.value)}
-                placeholder="Last name (required)"
-                className={fieldClass}
-                autoComplete="family-name"
-              />
-            </label>
-            <label className="relative block">
-              <Mail className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="Email address (required)"
-                className={fieldClass}
-                autoComplete="email"
-              />
-            </label>
-            <label className="relative block">
-              <Phone className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="tel"
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
-                placeholder="Phone number (required)"
-                className={fieldClass}
-                autoComplete="tel"
-              />
-            </label>
-
-            {needsOnsite ? (
-              <label className="relative block sm:col-span-2">
-                <MapPin className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <div className="mt-7 grid gap-4 sm:grid-cols-2">
+              <label className="relative block">
+                <User className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
                 <input
-                  value={address}
-                  onChange={(event) => setAddress(event.target.value)}
-                  placeholder="Address (required for on-site visits)"
+                  value={firstName}
+                  onChange={(event) => setFirstName(event.target.value)}
+                  placeholder="First name (required)"
                   className={fieldClass}
-                  autoComplete="street-address"
+                  autoComplete="given-name"
                 />
               </label>
-            ) : (
-              <div className="sm:col-span-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
-                Remote support selected — no address needed. Please keep your internet
-                connection active for the session.
-              </div>
-            )}
+              <label className="relative block">
+                <User className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={lastName}
+                  onChange={(event) => setLastName(event.target.value)}
+                  placeholder="Last name (required)"
+                  className={fieldClass}
+                  autoComplete="family-name"
+                />
+              </label>
+              <label className="relative block">
+                <Mail className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="Email address (required)"
+                  className={fieldClass}
+                  autoComplete="email"
+                />
+              </label>
+              <label className="relative block">
+                <Phone className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                  placeholder="Phone number (required)"
+                  className={fieldClass}
+                  autoComplete="tel"
+                />
+              </label>
 
-            <label className="relative block sm:col-span-2">
-              <Building2 className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
-              <input
-                value={businessName}
-                onChange={(event) => setBusinessName(event.target.value)}
-                placeholder="Business name (optional)"
-                className={fieldClass}
-                autoComplete="organization"
-              />
-            </label>
+              {needsOnsite ? (
+                <label className="relative block sm:col-span-2">
+                  <MapPin className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                  <input
+                    value={address}
+                    onChange={(event) => setAddress(event.target.value)}
+                    placeholder="Address (required)"
+                    className={fieldClass}
+                    autoComplete="street-address"
+                  />
+                </label>
+              ) : (
+                <div className="sm:col-span-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+                  Remote form — no address needed. Keep your internet connection active.
+                </div>
+              )}
 
-            <label className="block sm:col-span-2">
-              <textarea
-                rows={4}
-                value={notes}
-                onChange={(event) => setNotes(event.target.value)}
-                placeholder="Tell us a little more about the work (optional)"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/15"
-              />
-            </label>
-          </div>
+              <label className="relative block sm:col-span-2">
+                <Building2 className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={businessName}
+                  onChange={(event) => setBusinessName(event.target.value)}
+                  placeholder="Business name (optional)"
+                  className={fieldClass}
+                  autoComplete="organization"
+                />
+              </label>
 
-          <div className="mt-6">
-            <p className="text-sm font-semibold text-slate-700">
-              Would you like tips and special offers from Orca IT? Unsubscribe anytime.
-            </p>
-            <div className="mt-3 flex gap-3">
-              {(
-                [
-                  { id: "no", label: "No" },
-                  { id: "yes", label: "Yes" },
-                ] as const
-              ).map((option) => (
-                <button
-                  key={option.id}
-                  type="button"
-                  onClick={() => setOffers(option.id)}
-                  className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition ${
-                    offers === option.id
-                      ? "border-brand-navy bg-brand-mist text-brand-navy"
-                      : "border-slate-200 text-slate-600 hover:border-slate-300"
-                  }`}
-                >
-                  <span
-                    className={`grid size-4 place-items-center rounded-full border ${
+              <label className="block sm:col-span-2">
+                <textarea
+                  rows={4}
+                  value={notes}
+                  onChange={(event) => setNotes(event.target.value)}
+                  placeholder="Tell us a little more about the work (optional)"
+                  className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/15"
+                />
+              </label>
+            </div>
+
+            <div className="mt-6">
+              <p className="text-sm font-semibold text-slate-700">
+                Would you like tips and special offers from Orca IT? Unsubscribe anytime.
+              </p>
+              <div className="mt-3 flex gap-3">
+                {(
+                  [
+                    { id: "no", label: "No" },
+                    { id: "yes", label: "Yes" },
+                  ] as const
+                ).map((option) => (
+                  <button
+                    key={option.id}
+                    type="button"
+                    onClick={() => setOffers(option.id)}
+                    className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition ${
                       offers === option.id
-                        ? "border-brand-navy bg-brand-navy text-white"
-                        : "border-slate-300"
+                        ? "border-brand-navy bg-brand-mist text-brand-navy"
+                        : "border-slate-200 text-slate-600 hover:border-slate-300"
                     }`}
                   >
-                    {offers === option.id ? <Check className="size-2.5" strokeWidth={3} /> : null}
-                  </span>
-                  {option.label}
-                </button>
-              ))}
+                    <span
+                      className={`grid size-4 place-items-center rounded-full border ${
+                        offers === option.id
+                          ? "border-brand-navy bg-brand-navy text-white"
+                          : "border-slate-300"
+                      }`}
+                    >
+                      {offers === option.id ? (
+                        <Check className="size-2.5" strokeWidth={3} />
+                      ) : null}
+                    </span>
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
+
+            {error ? (
+              <p className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+                {error}
+              </p>
+            ) : null}
           </div>
 
-          {error ? (
-            <p className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
-              {error}
-            </p>
-          ) : null}
-
-          <div className="mt-8 flex items-center justify-between gap-3 border-t border-slate-100 pt-6">
+          <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:px-8">
             <button
               type="button"
               onClick={() => {
                 setError("");
                 setStep("services");
               }}
-              className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-6 py-3.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200"
+              className="inline-flex items-center gap-2 rounded-lg bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-100"
             >
               <ArrowLeft className="size-4" />
               Back
@@ -596,7 +593,7 @@ export function BookingForm() {
               type="button"
               disabled={isPending}
               onClick={submitDetails}
-              className="inline-flex items-center gap-2 rounded-full bg-brand-navy px-7 py-3.5 text-sm font-bold text-white transition hover:bg-brand-ink disabled:opacity-70"
+              className="inline-flex items-center gap-2 rounded-lg bg-brand-navy px-6 py-3 text-sm font-bold text-white transition hover:bg-brand-ink disabled:opacity-70"
             >
               {isPending ? "Submitting..." : "Submit"}
               <Check className="size-4" strokeWidth={3} />

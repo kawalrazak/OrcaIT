@@ -31,9 +31,9 @@ export const quoteServices: QuoteService[] = [
   },
   {
     id: "remote-support",
-    label: "IT Remote Support",
+    label: "IT Remote Support - Internet must be active",
     mode: "remote",
-    hint: "Internet must be active",
+    hint: "Online / phone help — no site visit",
   },
   {
     id: "data-backup",
