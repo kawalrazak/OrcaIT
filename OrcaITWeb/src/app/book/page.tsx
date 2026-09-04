@@ -2,8 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ShieldCheck, Star } from "lucide-react";
 import { BookNowWizard } from "@/components/book-now-wizard";
+import { ReviewRatingTrigger } from "@/components/customer-trust";
 import { SiteHeader } from "@/components/site-header";
 import { ORCA_PHONE_DISPLAY, ORCA_PHONE_TEL } from "@/data/contact";
+import { reviewStats } from "@/data/reviews";
 
 export const metadata: Metadata = {
   title: "Book Online | Orca IT Appointment Booking",
@@ -50,21 +52,19 @@ export default function BookPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-white/15 bg-white/10 p-5 backdrop-blur sm:min-w-[240px]">
-            <div className="flex gap-1 text-yellow-300">
+          <ReviewRatingTrigger className="rounded-2xl border border-white/15 bg-white/10 p-5 text-left backdrop-blur transition hover:bg-white/15 sm:min-w-[240px]">
+            <span className="flex gap-1 text-yellow-300">
               {[0, 1, 2, 3, 4].map((star) => (
                 <Star key={star} className="size-5 fill-current" />
               ))}
-            </div>
-            <p className="mt-3 text-2xl font-black tracking-tight">4.9 stars</p>
-            <p className="mt-1 text-sm text-white/80">Trusted by homes &amp; businesses</p>
-            <a
-              href={`tel:${ORCA_PHONE_TEL}`}
-              className="mt-4 block text-lg font-extrabold text-brand-sky hover:text-white"
-            >
-              Call {ORCA_PHONE_DISPLAY}
-            </a>
-          </div>
+            </span>
+            <span className="mt-3 block text-2xl font-black tracking-tight text-white">
+              {reviewStats.averageRating} stars
+            </span>
+            <span className="mt-1 block text-sm text-white/80">
+              Based on {reviewStats.totalReviews}+ customer reviews — click to read
+            </span>
+          </ReviewRatingTrigger>
         </div>
       </section>
 

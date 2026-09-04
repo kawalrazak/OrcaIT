@@ -9,6 +9,8 @@ import {
   Building2,
   Check,
   CheckCircle2,
+  Home,
+  Laptop,
   Mail,
   MapPin,
   Phone,
@@ -20,21 +22,18 @@ import { ORCA_PHONE_DISPLAY, ORCA_PHONE_TEL } from "@/data/contact";
 import {
   getQuoteServicesByIds,
   quoteServices,
-  selectionIsRemoteOnly,
-  selectionNeedsOnsiteVisit,
   type QuoteServiceMode,
 } from "@/data/booking-quote";
 
-type Step = "services" | "details" | "done";
-type VisitFilter = "all" | QuoteServiceMode;
+type Step = "visit" | "services" | "details" | "done";
 
 const fieldClass =
   "w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/15";
 
 export function BookingForm() {
-  const [step, setStep] = useState<Step>("services");
+  const [step, setStep] = useState<Step>("visit");
+  const [visitMode, setVisitMode] = useState<QuoteServiceMode | null>(null);
   const [search, setSearch] = useState("");
-  const [visitFilter, setVisitFilter] = useState<VisitFilter>("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -47,21 +46,30 @@ export function BookingForm() {
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  const needsOnsite = selectionNeedsOnsiteVisit(selectedIds);
-  const remoteOnly = selectionIsRemoteOnly(selectedIds);
+  const needsOnsite = visitMode === "onsite";
   const selectedServices = getQuoteServicesByIds(selectedIds);
 
   const filteredServices = useMemo(() => {
+    if (!visitMode) return [];
     const query = search.trim().toLowerCase();
     return quoteServices.filter((service) => {
-      if (visitFilter !== "all" && service.mode !== visitFilter) return false;
+      if (service.mode !== visitMode) return false;
       if (!query) return true;
       return (
         service.label.toLowerCase().includes(query) ||
         (service.hint?.toLowerCase().includes(query) ?? false)
       );
     });
-  }, [search, visitFilter]);
+  }, [search, visitMode]);
+
+  function chooseVisitMode(mode: QuoteServiceMode) {
+    setError("");
+    setVisitMode(mode);
+    setSelectedIds([]);
+    setSearch("");
+    setAddress("");
+    setStep("services");
+  }
 
   function toggleService(id: string) {
     setError("");
@@ -71,6 +79,11 @@ export function BookingForm() {
   }
 
   function goToDetails() {
+    if (!visitMode) {
+      setError("Please choose Remote or On-site support first.");
+      setStep("visit");
+      return;
+    }
     if (selectedIds.length === 0) {
       setError("Please select at least one service to continue.");
       return;
@@ -81,6 +94,12 @@ export function BookingForm() {
 
   function submitDetails() {
     setError("");
+
+    if (!visitMode) {
+      setError("Please choose Remote or On-site support first.");
+      setStep("visit");
+      return;
+    }
 
     if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim()) {
       setError("Please complete your name, email and phone number.");
@@ -93,7 +112,7 @@ export function BookingForm() {
     }
 
     const serviceLabels = selectedServices.map((service) => service.label).join(", ");
-    const visitType = remoteOnly ? "Remote support" : "On-site visit";
+    const visitType = needsOnsite ? "On-site visit" : "Remote support";
 
     startTransition(async () => {
       try {
@@ -108,8 +127,9 @@ export function BookingForm() {
             email: email.trim(),
             suburb: needsOnsite
               ? address.trim()
-              : `Remote support — no site visit (${visitType})`,
+              : "Remote support — no site visit required",
             issue: [
+              `Visit type: ${visitType}`,
               `Services: ${serviceLabels}`,
               businessName.trim() ? `Business: ${businessName.trim()}` : null,
               notes.trim() ? `Notes: ${notes.trim()}` : null,
@@ -139,9 +159,9 @@ export function BookingForm() {
   }
 
   function resetForm() {
-    setStep("services");
+    setStep("visit");
+    setVisitMode(null);
     setSearch("");
-    setVisitFilter("all");
     setSelectedIds([]);
     setFirstName("");
     setLastName("");
@@ -224,16 +244,71 @@ export function BookingForm() {
         </div>
       ) : null}
 
+      {step === "visit" ? (
+        <div className="px-5 py-8 sm:px-8 sm:py-10">
+          <h2 className="text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">
+            How can we help?
+          </h2>
+          <p className="mt-2 text-slate-600">
+            Choose remote or on-site support first — each path has its own form.
+          </p>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => chooseVisitMode("remote")}
+              className="rounded-2xl border-2 border-slate-200 bg-white p-6 text-left transition hover:border-emerald-500 hover:bg-emerald-50/40"
+            >
+              <span className="grid size-12 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
+                <Laptop className="size-6" />
+              </span>
+              <span className="mt-4 block text-xl font-extrabold text-brand-navy">
+                Remote only
+              </span>
+              <span className="mt-2 block text-sm leading-6 text-slate-600">
+                We help online or by phone. No address needed — your internet must be active.
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => chooseVisitMode("onsite")}
+              className="rounded-2xl border-2 border-slate-200 bg-white p-6 text-left transition hover:border-brand-blue hover:bg-brand-mist/60"
+            >
+              <span className="grid size-12 place-items-center rounded-xl bg-sky-100 text-sky-800">
+                <Home className="size-6" />
+              </span>
+              <span className="mt-4 block text-xl font-extrabold text-brand-navy">
+                On-site visit
+              </span>
+              <span className="mt-2 block text-sm leading-6 text-slate-600">
+                A technician comes to you. We&apos;ll ask for your address on the next steps.
+              </span>
+            </button>
+          </div>
+
+          {error ? (
+            <p className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+              {error}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
       {step === "services" ? (
         <div className="px-5 py-8 sm:px-8 sm:py-10">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <h2 className="text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-blue">
+                {visitMode === "remote" ? "Remote booking" : "On-site booking"}
+              </p>
+              <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">
                 Select services
               </h2>
               <p className="mt-2 text-slate-600">
-                Choose remote or on-site help — we&apos;ll only ask for an address when a
-                technician needs to visit.
+                {visitMode === "remote"
+                  ? "Showing remote services only — no site visit and no address later."
+                  : "Showing on-site services only — we’ll ask for your address next."}
               </p>
             </div>
             {selectedIds.length > 0 ? (
@@ -243,27 +318,29 @@ export function BookingForm() {
             ) : null}
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-2">
-            {(
-              [
-                { id: "all", label: "All services" },
-                { id: "remote", label: "Remote only" },
-                { id: "onsite", label: "On-site only" },
-              ] as const
-            ).map((option) => (
-              <button
-                key={option.id}
-                type="button"
-                onClick={() => setVisitFilter(option.id)}
-                className={`rounded-full px-4 py-2 text-sm font-bold transition ${
-                  visitFilter === option.id
-                    ? "bg-brand-navy text-white"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
+          <div className="mt-5 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => chooseVisitMode("remote")}
+              className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+                visitMode === "remote"
+                  ? "bg-emerald-600 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              Remote only
+            </button>
+            <button
+              type="button"
+              onClick={() => chooseVisitMode("onsite")}
+              className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+                visitMode === "onsite"
+                  ? "bg-brand-navy text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+              }`}
+            >
+              On-site only
+            </button>
           </div>
 
           <label className="relative mt-5 block">
@@ -301,20 +378,11 @@ export function BookingForm() {
                   </span>
                   <span className="min-w-0">
                     <span className="block font-bold text-brand-navy">{service.label}</span>
-                    <span className="mt-1 flex flex-wrap items-center gap-2 text-xs font-semibold">
-                      <span
-                        className={`rounded-full px-2 py-0.5 ${
-                          service.mode === "remote"
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-sky-50 text-sky-800"
-                        }`}
-                      >
-                        {service.mode === "remote" ? "Remote" : "On-site"}
+                    {service.hint ? (
+                      <span className="mt-1 block text-xs font-semibold text-slate-500">
+                        {service.hint}
                       </span>
-                      {service.hint ? (
-                        <span className="text-slate-500">{service.hint}</span>
-                      ) : null}
-                    </span>
+                    ) : null}
                   </span>
                 </button>
               );
@@ -333,7 +401,18 @@ export function BookingForm() {
             </p>
           ) : null}
 
-          <div className="mt-8 flex justify-end border-t border-slate-100 pt-6">
+          <div className="mt-8 flex items-center justify-between gap-3 border-t border-slate-100 pt-6">
+            <button
+              type="button"
+              onClick={() => {
+                setError("");
+                setStep("visit");
+              }}
+              className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-6 py-3.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200"
+            >
+              <ArrowLeft className="size-4" />
+              Back
+            </button>
             <button
               type="button"
               onClick={goToDetails}
@@ -348,7 +427,10 @@ export function BookingForm() {
 
       {step === "details" ? (
         <div className="px-5 py-8 sm:px-8 sm:py-10">
-          <h2 className="text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-blue">
+            {needsOnsite ? "On-site form" : "Remote form"}
+          </p>
+          <h2 className="mt-2 text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">
             Your details
           </h2>
           <p className="mt-2 text-slate-600">
@@ -370,9 +452,6 @@ export function BookingForm() {
                 </span>
               ))}
             </div>
-            <p className="mt-3 text-xs font-bold uppercase tracking-wide text-slate-500">
-              {remoteOnly ? "Remote form — address not required" : "On-site form — address required"}
-            </p>
           </div>
 
           <div className="mt-7 grid gap-4 sm:grid-cols-2">

@@ -1,11 +1,13 @@
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Home, ShieldCheck, Smile, Star } from "lucide-react";
+import { CustomerTrust, ReviewRatingTrigger } from "@/components/customer-trust";
 import { HeroSlider } from "@/components/hero-slider";
 import { HomeContactForm } from "@/components/home-contact-form";
 import { SiteHeader } from "@/components/site-header";
 import { ORCA_EMAIL, ORCA_PHONE_DISPLAY, ORCA_PHONE_TEL } from "@/data/contact";
 import { servicePageLinks } from "@/data/service-pages";
+import { reviewStats } from "@/data/reviews";
 
 function Logo() {
   return (
@@ -99,16 +101,19 @@ export default function HomePage() {
                   Call {ORCA_PHONE_DISPLAY}
                 </a>
               </div>
-              <div className="mt-8 flex flex-row items-center justify-center gap-3">
-                <div className="flex gap-1 text-yellow-300">
-                  {[0, 1, 2, 3, 4].map((star) => (
-                    <Star key={star} className="size-5 fill-current" />
-                  ))}
-                </div>
-                <p className="text-sm font-semibold text-white/90">
-                  4.9 stars from our happy clients
-                </p>
-              </div>
+              <ReviewRatingTrigger className="mt-8">
+                <span className="flex flex-row items-center justify-center gap-3">
+                  <span className="flex gap-1 text-yellow-300">
+                    {[0, 1, 2, 3, 4].map((star) => (
+                      <Star key={star} className="size-5 fill-current" />
+                    ))}
+                  </span>
+                  <span className="text-sm font-semibold text-white/90 underline decoration-white/40 underline-offset-4">
+                    {reviewStats.averageRating}★ from {reviewStats.totalReviews}+ reviews — tap
+                    to read
+                  </span>
+                </span>
+              </ReviewRatingTrigger>
             </div>
           </div>
         </div>
@@ -146,14 +151,19 @@ export default function HomePage() {
             </a>
           </div>
 
-          <div className="mt-6 flex items-center gap-2">
-            <div className="flex gap-0.5 text-yellow-300">
-              {[0, 1, 2, 3, 4].map((star) => (
-                <Star key={star} className="size-4 fill-current" />
-              ))}
-            </div>
-            <p className="text-xs font-semibold text-white/80">4.9 stars from happy clients</p>
-          </div>
+          <ReviewRatingTrigger className="mt-6">
+            <span className="flex items-center gap-2">
+              <span className="flex gap-0.5 text-yellow-300">
+                {[0, 1, 2, 3, 4].map((star) => (
+                  <Star key={star} className="size-4 fill-current" />
+                ))}
+              </span>
+              <span className="text-xs font-semibold text-white/80 underline decoration-white/40 underline-offset-4">
+                {reviewStats.averageRating}★ from {reviewStats.totalReviews}+ reviews — tap to
+                read
+              </span>
+            </span>
+          </ReviewRatingTrigger>
         </div>
       </section>
 
@@ -195,6 +205,8 @@ export default function HomePage() {
           })}
         </div>
       </section>
+
+      <CustomerTrust />
 
       <section id="contact" className="bg-surface py-20 lg:py-24">
         <div className="mx-auto max-w-4xl px-5 text-center lg:px-8">

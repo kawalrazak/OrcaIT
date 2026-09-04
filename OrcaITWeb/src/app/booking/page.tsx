@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BookingForm } from "@/components/booking-form";
+import { CustomerTrust } from "@/components/customer-trust";
 import { SiteHeader } from "@/components/site-header";
 import { ORCA_PHONE_DISPLAY, ORCA_PHONE_TEL } from "@/data/contact";
 
@@ -22,7 +23,7 @@ export default function BookingPage() {
 
       <SiteHeader />
 
-      <section className="px-5 pb-16 pt-8 sm:pt-10 lg:px-8 lg:pb-24">
+      <section className="px-5 pb-10 pt-8 sm:pt-10 lg:px-8">
         <div className="mx-auto max-w-5xl">
           <h1 className="text-4xl font-extrabold tracking-tight text-brand-navy sm:text-5xl">
             Booking
@@ -36,7 +37,11 @@ export default function BookingPage() {
             <BookingForm />
           </div>
 
-          <p className="mt-8 text-center text-sm text-slate-500">
+          <div className="mt-10">
+            <CustomerTrust compact />
+          </div>
+
+          <p className="mt-8 pb-8 text-center text-sm text-slate-500">
             Want to pick an exact time slot?{" "}
             <Link href="/book" className="font-bold text-brand-blue hover:text-brand-navy">
               Use the appointment scheduler
