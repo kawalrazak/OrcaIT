@@ -1,50 +1,99 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { useMemo, useState, useTransition } from "react";
 import {
+  ArrowLeft,
+  ArrowRight,
+  Building2,
+  Check,
   CheckCircle2,
-  MessageCircle,
+  Mail,
+  MapPin,
   Phone,
-  PhoneCall,
+  Search,
+  ShieldCheck,
+  User,
 } from "lucide-react";
 import { ORCA_PHONE_DISPLAY, ORCA_PHONE_TEL } from "@/data/contact";
+import {
+  getQuoteServicesByIds,
+  quoteServices,
+  selectionIsRemoteOnly,
+  selectionNeedsOnsiteVisit,
+  type QuoteServiceMode,
+} from "@/data/booking-quote";
 
-type ContactMethod = "call" | "chat" | "callback";
+type Step = "services" | "details" | "done";
+type VisitFilter = "all" | QuoteServiceMode;
 
-const inputClassName =
-  "w-full rounded-md border border-slate-300 bg-white px-4 py-3 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20";
+const fieldClass =
+  "w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/15";
 
 export function BookingForm() {
-  const [method, setMethod] = useState<ContactMethod>("callback");
-  const [submitted, setSubmitted] = useState(false);
+  const [step, setStep] = useState<Step>("services");
+  const [search, setSearch] = useState("");
+  const [visitFilter, setVisitFilter] = useState<VisitFilter>("all");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [notes, setNotes] = useState("");
+  const [offers, setOffers] = useState<"no" | "yes">("no");
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
 
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const needsOnsite = selectionNeedsOnsiteVisit(selectedIds);
+  const remoteOnly = selectionIsRemoteOnly(selectedIds);
+  const selectedServices = getQuoteServicesByIds(selectedIds);
+
+  const filteredServices = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return quoteServices.filter((service) => {
+      if (visitFilter !== "all" && service.mode !== visitFilter) return false;
+      if (!query) return true;
+      return (
+        service.label.toLowerCase().includes(query) ||
+        (service.hint?.toLowerCase().includes(query) ?? false)
+      );
+    });
+  }, [search, visitFilter]);
+
+  function toggleService(id: string) {
+    setError("");
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    );
+  }
+
+  function goToDetails() {
+    if (selectedIds.length === 0) {
+      setError("Please select at least one service to continue.");
+      return;
+    }
+    setError("");
+    setStep("details");
+  }
+
+  function submitDetails() {
     setError("");
 
-    if (method === "call") {
-      window.location.href = `tel:${ORCA_PHONE_TEL}`;
+    if (!firstName.trim() || !lastName.trim() || !email.trim() || !phone.trim()) {
+      setError("Please complete your name, email and phone number.");
       return;
     }
 
-    if (method === "chat") {
-      window.dispatchEvent(new CustomEvent("orca-open-chat"));
+    if (needsOnsite && !address.trim()) {
+      setError("Please enter your address for an on-site visit.");
       return;
     }
 
-    const form = event.currentTarget;
-    const data = new FormData(form);
-    const fullName = String(data.get("fullName") || "").trim();
-    const phone = String(data.get("phone") || "").trim();
-    const address = String(data.get("address") || "").trim();
-    const issue = String(data.get("issue") || "").trim();
-
-    if (!fullName || !phone || !issue) {
-      setError("Please complete your name, phone number and issue details.");
-      return;
-    }
+    const serviceLabels = selectedServices.map((service) => service.label).join(", ");
+    const visitType = remoteOnly ? "Remote support" : "On-site visit";
 
     startTransition(async () => {
       try {
@@ -52,25 +101,33 @@ export function BookingForm() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            supportFor: "Booking form",
+            supportFor: `Booking quote — ${visitType}`,
             existingCustomer: "Not specified",
-            name: fullName,
-            phone,
-            email: "Not provided",
-            suburb: address || "Not provided",
-            issue,
-            preferredContactTime: "Request a call back",
+            name: `${firstName.trim()} ${lastName.trim()}`,
+            phone: phone.trim(),
+            email: email.trim(),
+            suburb: needsOnsite
+              ? address.trim()
+              : `Remote support — no site visit (${visitType})`,
+            issue: [
+              `Services: ${serviceLabels}`,
+              businessName.trim() ? `Business: ${businessName.trim()}` : null,
+              notes.trim() ? `Notes: ${notes.trim()}` : null,
+              `Special offers: ${offers === "yes" ? "Yes" : "No"}`,
+            ]
+              .filter(Boolean)
+              .join("\n"),
+            preferredContactTime: "Request a quote / call back",
             website: "",
           }),
         });
 
         if (!response.ok) {
           const result = (await response.json()) as { error?: string };
-          throw new Error(result.error || "Could not save booking.");
+          throw new Error(result.error || "Could not submit booking.");
         }
 
-        setSubmitted(true);
-        form.reset();
+        setStep("done");
       } catch (submitError) {
         setError(
           submitError instanceof Error
@@ -81,206 +138,393 @@ export function BookingForm() {
     });
   }
 
-  if (submitted) {
-    return (
-      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center shadow-sm sm:p-10">
-        <span className="mx-auto grid size-16 place-items-center rounded-full bg-brand-mist text-brand-blue">
-          <CheckCircle2 className="size-8" />
-        </span>
-        <h3 className="mt-6 text-3xl font-extrabold tracking-tight text-brand-navy">
-          Request received
-        </h3>
-        <p className="mx-auto mt-4 max-w-md leading-7 text-slate-600">
-          Thanks — your details have been saved and our team will call you soon. Prefer to
-          speak now? Call{" "}
-          <a href={`tel:${ORCA_PHONE_TEL}`} className="font-bold text-brand-blue">
-            {ORCA_PHONE_DISPLAY}
-          </a>
-          .
-        </p>
-        <button
-          type="button"
-          onClick={() => setSubmitted(false)}
-          className="mt-8 inline-flex rounded-md bg-brand-blue px-8 py-3.5 text-base font-bold text-white transition hover:bg-brand-ink"
-        >
-          Submit another request
-        </button>
-      </div>
-    );
+  function resetForm() {
+    setStep("services");
+    setSearch("");
+    setVisitFilter("all");
+    setSelectedIds([]);
+    setFirstName("");
+    setLastName("");
+    setEmail("");
+    setPhone("");
+    setAddress("");
+    setBusinessName("");
+    setNotes("");
+    setOffers("no");
+    setError("");
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8"
-    >
-      <p className="text-sm font-bold uppercase tracking-[0.14em] text-brand-blue">
-        Trusted and Secure
-      </p>
-
-      <div className="mt-6">
-        <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
-          <span className="grid size-8 place-items-center rounded-full bg-slate-800 text-sm font-black text-white">
-            1
-          </span>
-          <h3 className="text-xl font-bold text-slate-800">Service Needed Via:</h3>
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_50px_-28px_rgba(12,88,172,0.45)]">
+      <div className="flex flex-col gap-4 border-b border-slate-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+        <div className="flex flex-wrap items-center gap-4">
+          <Image
+            src="/orca-logo.png?v=5"
+            alt="Orca IT"
+            width={160}
+            height={64}
+            className="h-10 w-auto object-contain"
+            unoptimized
+          />
+          <div className="inline-flex max-w-xl items-center gap-3 rounded-full bg-[#e8f2fc] px-4 py-2 text-sm text-brand-navy">
+            <ShieldCheck className="size-5 shrink-0 text-brand-blue" />
+            <span className="font-semibold leading-snug">
+              Every job is backed by our{" "}
+              <span className="font-extrabold">No solution, no fee</span> promise
+            </span>
+            <Link
+              href="/why-orca-it"
+              className="hidden shrink-0 rounded-full bg-brand-navy px-3 py-1.5 text-xs font-bold text-white transition hover:bg-brand-ink sm:inline-flex"
+            >
+              Learn more
+            </Link>
+          </div>
         </div>
-
-        <div className="mt-5 grid gap-4 md:grid-cols-3">
-          <button
-            type="button"
-            onClick={() => setMethod("call")}
-            className={`flex h-full flex-col items-start gap-3 rounded-lg border p-4 text-left transition ${
-              method === "call"
-                ? "border-brand-blue bg-brand-mist"
-                : "border-slate-200 hover:border-brand-blue/50"
-            }`}
-          >
-            <span className="grid size-11 place-items-center rounded-lg bg-brand-navy text-white">
-              <Phone className="size-5" />
-            </span>
-            <div>
-              <p className="font-extrabold text-brand-navy">Call — {ORCA_PHONE_DISPLAY}</p>
-              <p className="mt-1 text-sm text-slate-500">Call – Available Now – Free</p>
-              <p className="mt-1 text-sm text-slate-500">Wait Time – Less than 1 Minute</p>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setMethod("chat")}
-            className={`flex h-full flex-col items-start gap-3 rounded-lg border p-4 text-left transition ${
-              method === "chat"
-                ? "border-brand-blue bg-brand-mist"
-                : "border-slate-200 hover:border-brand-blue/50"
-            }`}
-          >
-            <span className="grid size-11 place-items-center rounded-lg bg-brand-blue text-white">
-              <MessageCircle className="size-5" />
-            </span>
-            <div>
-              <p className="font-extrabold text-brand-navy">Chat 24x7 – Available Now</p>
-              <p className="mt-1 text-sm text-slate-500">Chat with us</p>
-              <p className="mt-1 text-sm text-slate-500">Wait Time – Less than 1 Minute</p>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setMethod("callback")}
-            className={`flex h-full flex-col items-start gap-3 rounded-lg border p-4 text-left transition ${
-              method === "callback"
-                ? "border-brand-blue bg-brand-mist"
-                : "border-slate-200 hover:border-brand-blue/50"
-            }`}
-          >
-            <span className="grid size-11 place-items-center rounded-lg bg-brand-fun text-white">
-              <PhoneCall className="size-5" />
-            </span>
-            <div>
-              <p className="font-extrabold text-brand-navy">Request a Call Back</p>
-              <p className="mt-1 text-sm text-slate-500">Get an expert to call you back</p>
-            </div>
-          </button>
-        </div>
+        <a
+          href={`tel:${ORCA_PHONE_TEL}`}
+          className="inline-flex items-center justify-center gap-2 self-start rounded-full bg-slate-100 px-4 py-2.5 text-sm font-bold text-brand-navy transition hover:bg-slate-200 sm:self-auto"
+        >
+          <Phone className="size-4" />
+          {ORCA_PHONE_DISPLAY}
+        </a>
       </div>
 
-      {method === "callback" ? (
-        <>
-          <div className="mt-9">
-            <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
-              <span className="grid size-8 place-items-center rounded-full bg-slate-800 text-sm font-black text-white">
-                2
-              </span>
-              <h3 className="text-xl font-bold text-slate-800">Your Address (Optional)</h3>
+      <div className="bg-brand-navy px-5 py-3.5 text-center text-sm font-semibold leading-6 text-white sm:px-7 sm:text-left">
+        Request a quote today — friendly local technicians, clear pricing, and trusted support
+        for homes and businesses.{" "}
+        <Link href="/terms" className="underline underline-offset-2 hover:text-brand-sky">
+          Terms apply
+        </Link>
+        .
+      </div>
+
+      {step === "done" ? (
+        <div className="px-5 py-14 text-center sm:px-10">
+          <span className="mx-auto grid size-16 place-items-center rounded-full bg-emerald-50 text-emerald-600">
+            <CheckCircle2 className="size-9" />
+          </span>
+          <h2 className="mt-5 text-3xl font-extrabold tracking-tight text-brand-navy">
+            Quote request received
+          </h2>
+          <p className="mx-auto mt-3 max-w-md text-slate-600">
+            Thanks {firstName.trim() || "there"} — we&apos;ve got your details and will be in
+            touch shortly. Prefer to speak now? Call{" "}
+            <a href={`tel:${ORCA_PHONE_TEL}`} className="font-bold text-brand-blue">
+              {ORCA_PHONE_DISPLAY}
+            </a>
+            .
+          </p>
+          <button
+            type="button"
+            onClick={resetForm}
+            className="mt-8 inline-flex rounded-full bg-brand-navy px-7 py-3.5 text-sm font-bold text-white transition hover:bg-brand-ink"
+          >
+            Submit another request
+          </button>
+        </div>
+      ) : null}
+
+      {step === "services" ? (
+        <div className="px-5 py-8 sm:px-8 sm:py-10">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">
+                Select services
+              </h2>
+              <p className="mt-2 text-slate-600">
+                Choose remote or on-site help — we&apos;ll only ask for an address when a
+                technician needs to visit.
+              </p>
             </div>
-            <label className="mt-5 block">
-              <span className="mb-2 block text-sm font-semibold text-slate-700">
-                Enter Your Address:
-              </span>
-              <input
-                name="address"
-                type="text"
-                placeholder="Enter Your Address"
-                className={inputClassName}
-              />
-            </label>
+            {selectedIds.length > 0 ? (
+              <p className="text-sm font-bold text-brand-navy">
+                {selectedIds.length} selected
+              </p>
+            ) : null}
           </div>
 
-          <div className="mt-9">
-            <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
-              <span className="grid size-8 place-items-center rounded-full bg-slate-800 text-sm font-black text-white">
-                3
-              </span>
-              <h3 className="text-xl font-bold text-slate-800">Your Contact Details</h3>
-            </div>
-
-            <div className="mt-5 grid gap-5 sm:grid-cols-2">
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-slate-700">
-                  Full Name:
-                </span>
-                <input
-                  name="fullName"
-                  required
-                  type="text"
-                  placeholder="Full Name"
-                  className={inputClassName}
-                />
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-sm font-semibold text-slate-700">
-                  Phone Number:
-                </span>
-                <input
-                  name="phone"
-                  required
-                  type="tel"
-                  placeholder="Phone Number"
-                  className={inputClassName}
-                />
-              </label>
-              <label className="block sm:col-span-2">
-                <span className="mb-2 block text-sm font-semibold text-slate-700">
-                  Tell us about the issue you are facing:
-                </span>
-                <textarea
-                  name="issue"
-                  required
-                  rows={5}
-                  placeholder="Tell us about the issue you are facing"
-                  className={inputClassName}
-                />
-              </label>
-            </div>
+          <div className="mt-6 flex flex-wrap gap-2">
+            {(
+              [
+                { id: "all", label: "All services" },
+                { id: "remote", label: "Remote only" },
+                { id: "onsite", label: "On-site only" },
+              ] as const
+            ).map((option) => (
+              <button
+                key={option.id}
+                type="button"
+                onClick={() => setVisitFilter(option.id)}
+                className={`rounded-full px-4 py-2 text-sm font-bold transition ${
+                  visitFilter === option.id
+                    ? "bg-brand-navy text-white"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
+
+          <label className="relative mt-5 block">
+            <Search className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search for a service"
+              className="w-full rounded-xl border border-slate-200 bg-white py-3.5 pl-11 pr-4 outline-none transition placeholder:text-slate-400 focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/15"
+            />
+          </label>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            {filteredServices.map((service) => {
+              const selected = selectedIds.includes(service.id);
+              return (
+                <button
+                  key={service.id}
+                  type="button"
+                  onClick={() => toggleService(service.id)}
+                  className={`flex items-start gap-3 rounded-xl border px-4 py-4 text-left transition ${
+                    selected
+                      ? "border-brand-navy bg-brand-mist shadow-sm"
+                      : "border-slate-200 bg-white hover:border-brand-blue/50"
+                  }`}
+                >
+                  <span
+                    className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded border ${
+                      selected
+                        ? "border-brand-navy bg-brand-navy text-white"
+                        : "border-slate-300 bg-white"
+                    }`}
+                  >
+                    {selected ? <Check className="size-3.5" strokeWidth={3} /> : null}
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block font-bold text-brand-navy">{service.label}</span>
+                    <span className="mt-1 flex flex-wrap items-center gap-2 text-xs font-semibold">
+                      <span
+                        className={`rounded-full px-2 py-0.5 ${
+                          service.mode === "remote"
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-sky-50 text-sky-800"
+                        }`}
+                      >
+                        {service.mode === "remote" ? "Remote" : "On-site"}
+                      </span>
+                      {service.hint ? (
+                        <span className="text-slate-500">{service.hint}</span>
+                      ) : null}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {filteredServices.length === 0 ? (
+            <p className="mt-8 text-center text-sm text-slate-500">
+              No services match your search. Try another keyword.
+            </p>
+          ) : null}
 
           {error ? (
-            <p className="mt-5 rounded-lg bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+            <p className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
               {error}
             </p>
           ) : null}
 
-          <div className="mt-8 flex justify-center">
+          <div className="mt-8 flex justify-end border-t border-slate-100 pt-6">
             <button
-              type="submit"
-              disabled={isPending}
-              className="min-w-44 rounded-md bg-[#31c4e8] px-10 py-3.5 text-lg font-bold text-white transition hover:bg-[#1fb5db] disabled:opacity-70"
+              type="button"
+              onClick={goToDetails}
+              className="inline-flex items-center gap-2 rounded-full bg-brand-navy px-7 py-3.5 text-sm font-bold text-white transition hover:bg-brand-ink"
             >
-              {isPending ? "Submitting..." : "Submit"}
+              Next
+              <ArrowRight className="size-4" />
             </button>
           </div>
-        </>
-      ) : (
-        <div className="mt-8 flex justify-center">
-          <button
-            type="submit"
-            className="min-w-44 rounded-md bg-[#31c4e8] px-10 py-3.5 text-lg font-bold text-white transition hover:bg-[#1fb5db]"
-          >
-            {method === "call" ? `Call ${ORCA_PHONE_DISPLAY}` : "Open Chat"}
-          </button>
         </div>
-      )}
-    </form>
+      ) : null}
+
+      {step === "details" ? (
+        <div className="px-5 py-8 sm:px-8 sm:py-10">
+          <h2 className="text-2xl font-extrabold tracking-tight text-brand-navy sm:text-3xl">
+            Your details
+          </h2>
+          <p className="mt-2 text-slate-600">
+            {needsOnsite
+              ? "On-site booking — please include your address so our technician can attend."
+              : "Remote booking — no site visit needed. We’ll contact you online or by phone."}
+          </p>
+
+          <div className="mt-6">
+            <p className="text-sm font-bold text-brand-navy">Selected services</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {selectedServices.map((service) => (
+                <span
+                  key={service.id}
+                  className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-700"
+                >
+                  <Check className="size-3.5 text-brand-navy" strokeWidth={3} />
+                  {service.label}
+                </span>
+              ))}
+            </div>
+            <p className="mt-3 text-xs font-bold uppercase tracking-wide text-slate-500">
+              {remoteOnly ? "Remote form — address not required" : "On-site form — address required"}
+            </p>
+          </div>
+
+          <div className="mt-7 grid gap-4 sm:grid-cols-2">
+            <label className="relative block">
+              <User className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={firstName}
+                onChange={(event) => setFirstName(event.target.value)}
+                placeholder="First name (required)"
+                className={fieldClass}
+                autoComplete="given-name"
+              />
+            </label>
+            <label className="relative block">
+              <User className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={lastName}
+                onChange={(event) => setLastName(event.target.value)}
+                placeholder="Last name (required)"
+                className={fieldClass}
+                autoComplete="family-name"
+              />
+            </label>
+            <label className="relative block">
+              <Mail className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="Email address (required)"
+                className={fieldClass}
+                autoComplete="email"
+              />
+            </label>
+            <label className="relative block">
+              <Phone className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="tel"
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                placeholder="Phone number (required)"
+                className={fieldClass}
+                autoComplete="tel"
+              />
+            </label>
+
+            {needsOnsite ? (
+              <label className="relative block sm:col-span-2">
+                <MapPin className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  value={address}
+                  onChange={(event) => setAddress(event.target.value)}
+                  placeholder="Address (required for on-site visits)"
+                  className={fieldClass}
+                  autoComplete="street-address"
+                />
+              </label>
+            ) : (
+              <div className="sm:col-span-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+                Remote support selected — no address needed. Please keep your internet
+                connection active for the session.
+              </div>
+            )}
+
+            <label className="relative block sm:col-span-2">
+              <Building2 className="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={businessName}
+                onChange={(event) => setBusinessName(event.target.value)}
+                placeholder="Business name (optional)"
+                className={fieldClass}
+                autoComplete="organization"
+              />
+            </label>
+
+            <label className="block sm:col-span-2">
+              <textarea
+                rows={4}
+                value={notes}
+                onChange={(event) => setNotes(event.target.value)}
+                placeholder="Tell us a little more about the work (optional)"
+                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3.5 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-brand-navy focus:ring-2 focus:ring-brand-navy/15"
+              />
+            </label>
+          </div>
+
+          <div className="mt-6">
+            <p className="text-sm font-semibold text-slate-700">
+              Would you like tips and special offers from Orca IT? Unsubscribe anytime.
+            </p>
+            <div className="mt-3 flex gap-3">
+              {(
+                [
+                  { id: "no", label: "No" },
+                  { id: "yes", label: "Yes" },
+                ] as const
+              ).map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setOffers(option.id)}
+                  className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition ${
+                    offers === option.id
+                      ? "border-brand-navy bg-brand-mist text-brand-navy"
+                      : "border-slate-200 text-slate-600 hover:border-slate-300"
+                  }`}
+                >
+                  <span
+                    className={`grid size-4 place-items-center rounded-full border ${
+                      offers === option.id
+                        ? "border-brand-navy bg-brand-navy text-white"
+                        : "border-slate-300"
+                    }`}
+                  >
+                    {offers === option.id ? <Check className="size-2.5" strokeWidth={3} /> : null}
+                  </span>
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {error ? (
+            <p className="mt-5 rounded-xl bg-red-50 px-4 py-3 text-sm font-semibold text-red-600">
+              {error}
+            </p>
+          ) : null}
+
+          <div className="mt-8 flex items-center justify-between gap-3 border-t border-slate-100 pt-6">
+            <button
+              type="button"
+              onClick={() => {
+                setError("");
+                setStep("services");
+              }}
+              className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-6 py-3.5 text-sm font-bold text-slate-700 transition hover:bg-slate-200"
+            >
+              <ArrowLeft className="size-4" />
+              Back
+            </button>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={submitDetails}
+              className="inline-flex items-center gap-2 rounded-full bg-brand-navy px-7 py-3.5 text-sm font-bold text-white transition hover:bg-brand-ink disabled:opacity-70"
+            >
+              {isPending ? "Submitting..." : "Submit"}
+              <Check className="size-4" strokeWidth={3} />
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
