@@ -1,9 +1,13 @@
+export type VisitMode = "remote" | "onsite";
+
 export type BookableService = {
   id: string;
   title: string;
   description: string;
   durationMinutes: number;
   price: number;
+  /** Where this service can be delivered */
+  mode: VisitMode | "both";
   melbourneOnly?: boolean;
 };
 
@@ -18,24 +22,10 @@ export const bookableServices: BookableService[] = [
   {
     id: "remote-45",
     title: "Remote Support - 45 Minutes",
-    description: "We call you by phone",
+    description: "We help online or by phone — internet must be active",
     durationMinutes: 45,
     price: 99,
-  },
-  {
-    id: "onsite-60",
-    title: "On-site Home Support - 60 Minutes",
-    description: "A technician visits your home — Melbourne only",
-    durationMinutes: 60,
-    price: 149,
-    melbourneOnly: true,
-  },
-  {
-    id: "business-60",
-    title: "Business IT Support - 60 Minutes",
-    description: "Priority help for workplace systems",
-    durationMinutes: 60,
-    price: 179,
+    mode: "remote",
   },
   {
     id: "virus-60",
@@ -43,6 +33,24 @@ export const bookableServices: BookableService[] = [
     description: "Malware cleanup and security checks",
     durationMinutes: 60,
     price: 129,
+    mode: "both",
+  },
+  {
+    id: "onsite-60",
+    title: "On-site Home Support - 60 Minutes",
+    description: "A technician visits your home — Melbourne only",
+    durationMinutes: 60,
+    price: 149,
+    mode: "onsite",
+    melbourneOnly: true,
+  },
+  {
+    id: "business-60",
+    title: "Business IT Support - 60 Minutes",
+    description: "Priority help for workplace systems on-site",
+    durationMinutes: 60,
+    price: 179,
+    mode: "onsite",
   },
 ];
 
@@ -64,9 +72,17 @@ export function isMelbournePostcode(postcode: string) {
   return melbournePostcodeRanges.some(([from, to]) => code >= from && code <= to);
 }
 
-export function getAvailableServices(postcode: string) {
+export function serviceMatchesVisitMode(service: BookableService, visitMode: VisitMode) {
+  return service.mode === "both" || service.mode === visitMode;
+}
+
+export function getAvailableServices(postcode: string, visitMode?: VisitMode | null) {
   const melbourne = isMelbournePostcode(postcode);
-  return bookableServices.filter((service) => !service.melbourneOnly || melbourne);
+  return bookableServices.filter((service) => {
+    if (service.melbourneOnly && !melbourne) return false;
+    if (visitMode && !serviceMatchesVisitMode(service, visitMode)) return false;
+    return true;
+  });
 }
 
 export const bookingStaff: BookingStaff[] = [
@@ -121,7 +137,16 @@ export function getTimeSlotsForDate(date: Date) {
   // Sunday: no slots (empty state demo)
   if (day === 0) return [] as string[];
 
-  const baseSlots = ["08:00 am", "08:30 am", "09:00 am", "10:00 am", "11:30 am", "01:00 pm", "02:30 pm", "04:00 pm"];
+  const baseSlots = [
+    "08:00 am",
+    "08:30 am",
+    "09:00 am",
+    "10:00 am",
+    "11:30 am",
+    "01:00 pm",
+    "02:30 pm",
+    "04:00 pm",
+  ];
 
   // Saturday: fewer slots
   if (day === 6) return ["09:00 am", "10:00 am", "11:30 am"];

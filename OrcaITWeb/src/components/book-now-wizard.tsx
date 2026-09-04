@@ -7,6 +7,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Home,
+  Laptop,
   Mail,
   MapPin,
   Phone,
@@ -29,14 +31,20 @@ import {
   isMelbournePostcode,
   type BookableService,
   type BookingStaff,
+  type VisitMode,
 } from "@/data/book-now";
 
-type Step = "postcode" | "service" | "datetime" | "address" | "details" | "confirmed";
+type Step = "visit" | "postcode" | "service" | "datetime" | "address" | "details" | "confirmed";
 
 const stepMeta: Record<
   Exclude<Step, "confirmed">,
   { label: string; title: string; trust: string }
 > = {
+  visit: {
+    label: "Type",
+    title: "How can we help?",
+    trust: "Choose remote or on-site first — each path has its own form.",
+  },
   postcode: {
     label: "Location",
     title: "Where do you need help?",
@@ -45,7 +53,7 @@ const stepMeta: Record<
   service: {
     label: "Service",
     title: "What do you need help with?",
-    trust: "Choose the option that best fits your issue — we’ll confirm the details with you.",
+    trust: "Only services for your chosen visit type are shown below.",
   },
   datetime: {
     label: "Schedule",
@@ -55,7 +63,7 @@ const stepMeta: Record<
   address: {
     label: "Address",
     title: "Where should we attend?",
-    trust: "Only needed for on-site visits so our technician can find you easily.",
+    trust: "Required for on-site visits so our technician can find you easily.",
   },
   details: {
     label: "Details",
@@ -107,7 +115,8 @@ function sameDay(a: Date, b: Date) {
 }
 
 export function BookNowWizard() {
-  const [step, setStep] = useState<Step>("postcode");
+  const [step, setStep] = useState<Step>("visit");
+  const [visitMode, setVisitMode] = useState<VisitMode | null>(null);
   const [weekStart, setWeekStart] = useState(0);
   const [booking, setBooking] = useState<BookingState>(initialState);
   const [error, setError] = useState("");
@@ -117,25 +126,37 @@ export function BookNowWizard() {
 
   const allDates = useMemo(() => getBookingDates(21), []);
   const visibleDates = allDates.slice(weekStart, weekStart + 7);
+  const isRemoteBooking = visitMode === "remote";
 
   function update<K extends keyof BookingState>(key: K, value: BookingState[K]) {
     setBooking((current) => ({ ...current, [key]: value }));
     setError("");
   }
 
-  function isRemoteService(service: BookableService | null) {
-    return service?.id === "remote-45";
+  function chooseVisitMode(mode: VisitMode) {
+    setError("");
+    setVisitMode(mode);
+    update("service", null);
+    update("unit", "");
+    update("address", "");
+    setStep("postcode");
   }
 
   function goBack() {
     setError("");
-    if (step === "service") setStep("postcode");
+    if (step === "postcode") setStep("visit");
+    else if (step === "service") setStep("postcode");
     else if (step === "datetime") setStep("service");
     else if (step === "address") setStep("datetime");
-    else if (step === "details") setStep(isRemoteService(booking.service) ? "datetime" : "address");
+    else if (step === "details") setStep(isRemoteBooking ? "datetime" : "address");
   }
 
   function continueFromPostcode() {
+    if (!visitMode) {
+      setError("Please choose Remote or On-site support first.");
+      setStep("visit");
+      return;
+    }
     if (!/^\d{4}$/.test(booking.postcode.trim())) {
       setError("Please enter a valid 4-digit Australian postcode.");
       return;
@@ -145,6 +166,11 @@ export function BookNowWizard() {
   }
 
   function continueFromService(service: BookableService) {
+    if (!visitMode) {
+      setError("Please choose Remote or On-site support first.");
+      setStep("visit");
+      return;
+    }
     if (service.melbourneOnly && !isMelbournePostcode(booking.postcode)) {
       setError(
         "On-site Home Support is only available in Melbourne. Please choose another service or enter a Melbourne postcode.",
@@ -160,8 +186,8 @@ export function BookNowWizard() {
       setError("Please select a date, time and technician.");
       return;
     }
-    // Remote/online support does not need a physical address.
-    if (isRemoteService(booking.service)) {
+    // Remote path never needs a physical address.
+    if (isRemoteBooking) {
       update("unit", "");
       update("address", "");
       setStep("details");
@@ -180,6 +206,7 @@ export function BookNowWizard() {
 
   async function submitBooking() {
     if (
+      !visitMode ||
       !booking.service ||
       !booking.date ||
       !booking.time ||
@@ -194,6 +221,11 @@ export function BookNowWizard() {
       return;
     }
 
+    if (!isRemoteBooking && !booking.address.trim()) {
+      setError("Please enter your address for an on-site visit.");
+      return;
+    }
+
     setIsSubmitting(true);
     setError("");
 
@@ -203,13 +235,13 @@ export function BookNowWizard() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           postcode: booking.postcode,
-          serviceTitle: booking.service.title,
+          serviceTitle: `${booking.service.title} (${isRemoteBooking ? "Remote" : "On-site"})`,
           servicePrice: booking.service.price,
           dateLabel: formatBookingDate(booking.date),
           time: booking.time,
           staffName: booking.staff.name,
-          unit: isRemoteService(booking.service) ? "" : booking.unit,
-          address: isRemoteService(booking.service)
+          unit: isRemoteBooking ? "" : booking.unit,
+          address: isRemoteBooking
             ? `Remote support — postcode ${booking.postcode}`
             : booking.address,
           firstName: booking.firstName,
@@ -247,30 +279,34 @@ export function BookNowWizard() {
 
   function resetBooking() {
     setBooking(initialState);
+    setVisitMode(null);
     setWeekStart(0);
     setEmailSent(false);
     setEmailNote(null);
     setError("");
-    setStep("postcode");
+    setStep("visit");
   }
 
   const selectedSlots =
     booking.date === null ? [] : getTimeSlotsForDate(booking.date);
-  const availableServices = getAvailableServices(booking.postcode);
+  const availableServices = getAvailableServices(booking.postcode, visitMode);
 
   const progressSteps = useMemo(() => {
     const steps: Exclude<Step, "confirmed">[] = [
+      "visit",
       "postcode",
       "service",
       "datetime",
-      ...(isRemoteService(booking.service) ? [] : (["address"] as const)),
+      ...(isRemoteBooking ? [] : (["address"] as const)),
       "details",
     ];
     return steps;
-  }, [booking.service]);
+  }, [isRemoteBooking]);
 
   const activeStepIndex =
-    step === "confirmed" ? progressSteps.length : progressSteps.indexOf(step as Exclude<Step, "confirmed">);
+    step === "confirmed"
+      ? progressSteps.length
+      : progressSteps.indexOf(step as Exclude<Step, "confirmed">);
   const currentMeta = step !== "confirmed" ? stepMeta[step] : null;
 
   return (
@@ -331,11 +367,54 @@ export function BookNowWizard() {
       ) : null}
 
       <div className="px-6 py-7 sm:px-8 sm:py-8">
+        {step === "visit" ? (
+          <div>
+            <h2 className="text-2xl font-extrabold text-brand-navy">{stepMeta.visit.title}</h2>
+            <p className="mt-2 text-slate-600">{stepMeta.visit.trust}</p>
+
+            <div className="mt-6 grid gap-3">
+              <button
+                type="button"
+                onClick={() => chooseVisitMode("remote")}
+                className="rounded-xl border-2 border-slate-200 bg-white p-5 text-left transition hover:border-emerald-500 hover:bg-emerald-50/50"
+              >
+                <span className="grid size-11 place-items-center rounded-xl bg-emerald-100 text-emerald-700">
+                  <Laptop className="size-5" />
+                </span>
+                <span className="mt-3 block text-lg font-extrabold text-brand-navy">
+                  Remote only
+                </span>
+                <span className="mt-1 block text-sm leading-6 text-slate-600">
+                  Online or phone support. No address needed — keep your internet active.
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => chooseVisitMode("onsite")}
+                className="rounded-xl border-2 border-slate-200 bg-white p-5 text-left transition hover:border-brand-blue hover:bg-brand-mist/70"
+              >
+                <span className="grid size-11 place-items-center rounded-xl bg-sky-100 text-sky-800">
+                  <Home className="size-5" />
+                </span>
+                <span className="mt-3 block text-lg font-extrabold text-brand-navy">
+                  On-site visit
+                </span>
+                <span className="mt-1 block text-sm leading-6 text-slate-600">
+                  A technician comes to you. We&apos;ll ask for your address after you pick a time.
+                </span>
+              </button>
+            </div>
+
+            {error ? <p className="mt-4 text-sm font-semibold text-red-600">{error}</p> : null}
+          </div>
+        ) : null}
+
         {step === "postcode" ? (
           <div>
             <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
               <ShieldCheck className="size-3.5" />
-              Secure &amp; obligation-free
+              {isRemoteBooking ? "Remote booking — no address later" : "On-site booking"}
             </div>
             <h2 className="text-2xl font-extrabold text-brand-navy">{stepMeta.postcode.title}</h2>
             <p className="mt-2 text-slate-600">{stepMeta.postcode.trust}</p>
@@ -364,6 +443,13 @@ export function BookNowWizard() {
             >
               Check availability
             </button>
+            <button
+              type="button"
+              onClick={goBack}
+              className="mt-3 w-full rounded-lg bg-slate-100 py-3.5 text-base font-bold text-slate-700 transition hover:bg-slate-200"
+            >
+              Back
+            </button>
             <p className="mt-4 text-center text-xs text-slate-500">
               Prefer to speak with someone?{" "}
               <a href={`tel:${ORCA_PHONE_TEL}`} className="font-bold text-brand-blue">
@@ -375,12 +461,15 @@ export function BookNowWizard() {
 
         {step === "service" ? (
           <div>
-            <h2 className="text-2xl font-extrabold text-brand-navy">{stepMeta.service.title}</h2>
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-brand-blue">
+              {isRemoteBooking ? "Remote services only" : "On-site services only"}
+            </p>
+            <h2 className="mt-2 text-2xl font-extrabold text-brand-navy">{stepMeta.service.title}</h2>
             <p className="mt-2 text-slate-600">{stepMeta.service.trust}</p>
-            {!isMelbournePostcode(booking.postcode) ? (
+            {!isRemoteBooking && !isMelbournePostcode(booking.postcode) ? (
               <p className="mt-3 rounded-lg bg-brand-mist px-4 py-3 text-sm text-brand-navy">
-                On-site Home Support is available in Melbourne. Remote support and other options
-                are still available for {booking.postcode}.
+                On-site Home Support is Melbourne-only. Other on-site options may still be
+                available for {booking.postcode}.
               </p>
             ) : null}
             <div className="mt-6 space-y-3">
@@ -411,6 +500,12 @@ export function BookNowWizard() {
                 </button>
               ))}
             </div>
+            {availableServices.length === 0 ? (
+              <p className="mt-6 text-sm font-semibold text-slate-600">
+                No services available for this postcode and visit type. Go back and try another
+                option.
+              </p>
+            ) : null}
             {error ? <p className="mt-3 text-sm font-semibold text-red-600">{error}</p> : null}
             <button
               type="button"
