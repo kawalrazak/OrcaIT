@@ -75,7 +75,7 @@ export const bookingStaff: BookingStaff[] = [
     id: "styla-b",
     name: "Styla B.",
     role: "Technician",
-    phone: "+61 498 082 750",
+    phone: "+61 450 577 407",
   },
 ];
 

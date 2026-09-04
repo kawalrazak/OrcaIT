@@ -112,7 +112,7 @@ export const homeServiceArticles: HomeServiceArticle[] = [
     faqs: [
       {
         question: "How do I get help with my desktop computer?",
-        answer: `Call Orca IT on 0498 082 750 or email info@orcait.com.au and tell us what’s happening. We’ll help you work out whether remote support or an on-site visit is the best next step.`,
+        answer: `Call Orca IT on 0450 577 407 or email info@orcait.com.au and tell us what’s happening. We’ll help you work out whether remote support or an on-site visit is the best next step.`,
       },
       {
         question: "Can you fix a PC that won’t turn on?",
@@ -908,7 +908,7 @@ export const homeServiceArticles: HomeServiceArticle[] = [
       {
         question: "How do I get remote support?",
         answer:
-          "Call 0498 082 750 or email info@orcait.com.au with a short description of the problem and your preferred contact time.",
+          "Call 0450 577 407 or email info@orcait.com.au with a short description of the problem and your preferred contact time.",
       },
     ],
     relatedSlugs: ["desktop-pc-repairs", "email-troubleshooting", "virus-removal", "internet-networking"],

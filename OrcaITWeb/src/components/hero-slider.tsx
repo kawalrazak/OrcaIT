@@ -53,7 +53,7 @@ export function HeroSlider() {
         />
       ))}
 
-      <div className="absolute bottom-5 left-1/2 z-20 flex -translate-x-1/2 gap-2.5">
+      <div className="absolute bottom-20 left-1/2 z-20 flex -translate-x-1/2 gap-2.5 lg:bottom-5">
         {slides.map((slide, slideIndex) => (
           <button
             key={slide.src}

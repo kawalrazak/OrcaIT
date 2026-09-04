@@ -21,18 +21,18 @@ import {
 } from "@/data/contact";
 
 export const metadata: Metadata = {
-  title: "Book an Appointment",
+  title: "Book an Appointment | Request a Quote",
   description:
-    "Book Orca IT support online or call 0498 082 750. Home and business technology help with fast, clear next steps.",
+    "Book Orca IT support online or call 0450 577 407. Trusted home and business technology help with clear next steps. No solution, no fee.",
 };
 
 const whyUs = [
   "Trained & friendly IT experts",
   "Fully insured & professional technicians",
   "Locally owned & operated",
-  "Home and Business IT Solutions",
+  "Home and business IT solutions",
   "Clear advice with no jargon",
-  "Remote and on-site support available",
+  "No solution, no fee",
 ];
 
 const serviceAreas = [
@@ -61,16 +61,34 @@ export default function BookingPage() {
       <SiteHeader />
 
       <section className="bg-brand-navy px-5 py-12 text-white lg:px-8 lg:py-16">
-        <div className="mx-auto max-w-7xl">
-          <h1 className="max-w-4xl text-4xl font-extrabold leading-[1.05] tracking-[-0.04em] sm:text-5xl lg:text-6xl">
-            Looking for – Expert Help?
-          </h1>
-          <a
-            href={`tel:${ORCA_PHONE_TEL}`}
-            className="mt-6 inline-flex text-3xl font-black tracking-tight text-brand-sky transition hover:text-white sm:text-4xl"
-          >
-            Call Orca IT – {ORCA_PHONE_DISPLAY}
-          </a>
+        <div className="mx-auto flex max-w-7xl flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-sky">
+              Book online
+            </p>
+            <h1 className="mt-3 max-w-4xl text-4xl font-extrabold leading-[1.05] tracking-[-0.04em] sm:text-5xl lg:text-6xl">
+              Request a quote or book trusted IT help
+            </h1>
+            <p className="mt-5 max-w-2xl text-base leading-7 text-white/85 sm:text-lg">
+              Tell us what you need and we&apos;ll get back to you quickly — with clear advice,
+              friendly support, and no jargon.
+            </p>
+            <a
+              href={`tel:${ORCA_PHONE_TEL}`}
+              className="mt-6 inline-flex text-2xl font-black tracking-tight text-brand-sky transition hover:text-white sm:text-3xl"
+            >
+              Call Orca IT — {ORCA_PHONE_DISPLAY}
+            </a>
+          </div>
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-5 backdrop-blur sm:min-w-[220px]">
+            <p className="text-sm font-semibold text-white/80">Prefer the full booking flow?</p>
+            <Link
+              href="/book"
+              className="mt-3 inline-flex rounded-full bg-brand-fun px-5 py-3 text-sm font-black uppercase tracking-wide text-white transition hover:bg-red-600"
+            >
+              Book step by step
+            </Link>
+          </div>
         </div>
       </section>
 

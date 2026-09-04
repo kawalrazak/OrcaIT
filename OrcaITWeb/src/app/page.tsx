@@ -53,48 +53,106 @@ export default function HomePage() {
 
       <SiteHeader />
 
-      <section className="relative min-h-[70vh] overflow-hidden text-white sm:min-h-[78vh]">
-        <HeroSlider />
-        <div className="absolute inset-0 bg-brand-blue/45" />
-        <div className="absolute inset-0 bg-gradient-to-t from-brand-ink/45 via-brand-blue/10 to-brand-fun/10" />
+      <section className="overflow-hidden">
+        {/* Image band — short overlay on mobile, full hero copy on desktop */}
+        <div className="relative h-[46vh] min-h-[260px] overflow-hidden text-white lg:min-h-[78vh] lg:h-auto">
+          <HeroSlider />
+          <div className="absolute inset-0 bg-brand-blue/40 lg:bg-brand-blue/45" />
+          <div className="absolute inset-0 bg-gradient-to-t from-brand-ink/70 via-brand-ink/20 to-transparent lg:from-brand-ink/45 lg:via-brand-blue/10 lg:to-brand-fun/10" />
 
-        <div className="relative mx-auto flex min-h-[70vh] max-w-7xl flex-col justify-center px-5 py-20 sm:min-h-[78vh] lg:px-8">
-          <div className="mx-auto max-w-4xl text-center">
-            <p className="mb-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-black uppercase tracking-[0.14em] text-brand-fun shadow-lg shadow-white/20">
-              <ShieldCheck className="size-5" />
-              No solution, no fee
+          {/* Mobile overlay — short, readable */}
+          <div className="absolute inset-x-0 bottom-0 px-5 pb-8 pt-16 lg:hidden">
+            <p className="text-sm font-semibold lowercase tracking-wide text-white/85">
+              need help with your tech?
             </p>
-            <h1 className="text-3xl font-extrabold leading-tight tracking-[-0.04em] text-white sm:text-5xl lg:text-6xl">
-              IT help that gets you back to life
+            <h1 className="mt-1 text-4xl font-extrabold lowercase leading-[1.05] tracking-[-0.04em] text-white">
+              we come to you
             </h1>
-            <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-white/90 sm:text-lg">
-              Friendly on-site and online support for homes and businesses —
-              so you can stop stressing about tech and get on with your day.
-            </p>
-            <div className="mt-9 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <Link
-                href="/book"
-                className="inline-flex rounded-full bg-brand-fun px-8 py-4 text-sm font-black uppercase tracking-[0.08em] text-white shadow-xl shadow-red-900/25 transition hover:-translate-y-0.5 hover:bg-red-600"
-              >
-                Book Orca IT
-              </Link>
-              <a
-                href={`tel:${ORCA_PHONE_TEL}`}
-                className="inline-flex rounded-full border-2 border-white/40 px-8 py-4 text-sm font-black uppercase tracking-[0.08em] text-white transition hover:border-brand-sky hover:text-brand-sky"
-              >
-                Call {ORCA_PHONE_DISPLAY}
-              </a>
-            </div>
-            <div className="mt-8 flex flex-col items-center justify-center gap-2 sm:flex-row sm:gap-3">
-              <div className="flex gap-1 text-yellow-300">
-                {[0, 1, 2, 3, 4].map((star) => (
-                  <Star key={star} className="size-5 fill-current" />
-                ))}
-              </div>
-              <p className="text-sm font-semibold text-white/90">
-                4.9 stars from our happy clients
+            <div className="mt-3 h-1 w-14 rounded-full bg-white" />
+          </div>
+
+          {/* Desktop / large tablet — full hero message */}
+          <div className="relative mx-auto hidden min-h-[78vh] max-w-7xl flex-col justify-center px-5 py-20 lg:flex lg:px-8">
+            <div className="mx-auto max-w-4xl text-center">
+              <p className="mb-5 inline-flex items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-black uppercase tracking-[0.14em] text-brand-fun shadow-lg shadow-white/20">
+                <ShieldCheck className="size-5" />
+                No solution, no fee
               </p>
+              <h1 className="text-5xl font-extrabold leading-tight tracking-[-0.04em] text-white lg:text-6xl">
+                IT help that gets you back to life
+              </h1>
+              <p className="mx-auto mt-5 max-w-xl text-lg leading-8 text-white/90">
+                Friendly on-site and online support for homes and businesses —
+                so you can stop stressing about tech and get on with your day.
+              </p>
+              <div className="mt-9 flex flex-row items-center justify-center gap-4">
+                <Link
+                  href="/book"
+                  className="inline-flex rounded-full bg-brand-fun px-8 py-4 text-sm font-black uppercase tracking-[0.08em] text-white shadow-xl shadow-red-900/25 transition hover:-translate-y-0.5 hover:bg-red-600"
+                >
+                  Book Orca IT
+                </Link>
+                <a
+                  href={`tel:${ORCA_PHONE_TEL}`}
+                  className="inline-flex rounded-full border-2 border-white/40 px-8 py-4 text-sm font-black uppercase tracking-[0.08em] text-white transition hover:border-brand-sky hover:text-brand-sky"
+                >
+                  Call {ORCA_PHONE_DISPLAY}
+                </a>
+              </div>
+              <div className="mt-8 flex flex-row items-center justify-center gap-3">
+                <div className="flex gap-1 text-yellow-300">
+                  {[0, 1, 2, 3, 4].map((star) => (
+                    <Star key={star} className="size-5 fill-current" />
+                  ))}
+                </div>
+                <p className="text-sm font-semibold text-white/90">
+                  4.9 stars from our happy clients
+                </p>
+              </div>
             </div>
+          </div>
+        </div>
+
+        {/* Mobile trust panel — sits under the photo */}
+        <div className="bg-brand-navy px-5 py-10 text-white lg:hidden">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-sky">
+            Why Orca IT
+          </p>
+          <h2 className="mt-4 text-[1.65rem] font-extrabold leading-snug tracking-[-0.03em]">
+            Your trusted local IT support for homes and businesses.
+          </h2>
+          <p className="mt-4 text-[0.95rem] leading-7 text-white/85">
+            Friendly technicians, clear advice, and practical fixes — remotely or at your door.
+            We help you get back online without the jargon or stress.
+          </p>
+
+          <div className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-black uppercase tracking-[0.12em] text-brand-fun">
+            <ShieldCheck className="size-4" />
+            No solution, no fee
+          </div>
+
+          <div className="mt-7 flex flex-col gap-3">
+            <Link
+              href="/book"
+              className="inline-flex items-center justify-center rounded-full bg-brand-fun px-7 py-3.5 text-sm font-black uppercase tracking-[0.08em] text-white transition hover:bg-red-600"
+            >
+              Book Orca IT
+            </Link>
+            <a
+              href={`tel:${ORCA_PHONE_TEL}`}
+              className="inline-flex items-center justify-center rounded-full border-2 border-white/35 px-7 py-3.5 text-sm font-black uppercase tracking-[0.08em] text-white transition hover:border-brand-sky hover:text-brand-sky"
+            >
+              Call {ORCA_PHONE_DISPLAY}
+            </a>
+          </div>
+
+          <div className="mt-6 flex items-center gap-2">
+            <div className="flex gap-0.5 text-yellow-300">
+              {[0, 1, 2, 3, 4].map((star) => (
+                <Star key={star} className="size-4 fill-current" />
+              ))}
+            </div>
+            <p className="text-xs font-semibold text-white/80">4.9 stars from happy clients</p>
           </div>
         </div>
       </section>

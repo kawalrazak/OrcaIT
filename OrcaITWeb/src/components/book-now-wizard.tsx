@@ -10,11 +10,13 @@ import {
   Mail,
   MapPin,
   Phone,
+  ShieldCheck,
   Tag,
   User,
 } from "lucide-react";
 import Image from "next/image";
 import { useMemo, useState } from "react";
+import { ORCA_PHONE_DISPLAY, ORCA_PHONE_TEL } from "@/data/contact";
 import {
   formatBookingDate,
   formatCurrency,
@@ -30,6 +32,37 @@ import {
 } from "@/data/book-now";
 
 type Step = "postcode" | "service" | "datetime" | "address" | "details" | "confirmed";
+
+const stepMeta: Record<
+  Exclude<Step, "confirmed">,
+  { label: string; title: string; trust: string }
+> = {
+  postcode: {
+    label: "Location",
+    title: "Where do you need help?",
+    trust: "We’ll check which services are available near you.",
+  },
+  service: {
+    label: "Service",
+    title: "What do you need help with?",
+    trust: "Choose the option that best fits your issue — we’ll confirm the details with you.",
+  },
+  datetime: {
+    label: "Schedule",
+    title: "When suits you best?",
+    trust: "Pick a time that works for you. Same-day options may be available.",
+  },
+  address: {
+    label: "Address",
+    title: "Where should we attend?",
+    trust: "Only needed for on-site visits so our technician can find you easily.",
+  },
+  details: {
+    label: "Details",
+    title: "Almost done — your contact details",
+    trust: "We’ll use these to confirm your booking and keep you updated.",
+  },
+};
 
 type BookingState = {
   postcode: string;
@@ -225,23 +258,74 @@ export function BookNowWizard() {
     booking.date === null ? [] : getTimeSlotsForDate(booking.date);
   const availableServices = getAvailableServices(booking.postcode);
 
+  const progressSteps = useMemo(() => {
+    const steps: Exclude<Step, "confirmed">[] = [
+      "postcode",
+      "service",
+      "datetime",
+      ...(isRemoteService(booking.service) ? [] : (["address"] as const)),
+      "details",
+    ];
+    return steps;
+  }, [booking.service]);
+
+  const activeStepIndex =
+    step === "confirmed" ? progressSteps.length : progressSteps.indexOf(step as Exclude<Step, "confirmed">);
+  const currentMeta = step !== "confirmed" ? stepMeta[step] : null;
+
   return (
-    <div className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-[0_20px_60px_-28px_rgba(6,69,143,0.45)]">
+    <div className="mx-auto w-full max-w-xl overflow-hidden rounded-2xl border border-blue-100 bg-white shadow-[0_24px_70px_-32px_rgba(6,69,143,0.5)]">
       {step !== "confirmed" ? (
-        <div className="bg-gradient-to-r from-brand-blue to-brand-ink px-6 py-7 text-white sm:px-8">
-          <Image
-            src="/orca-logo.png?v=5"
-            alt="ORCA IT"
-            width={220}
-            height={112}
-            className="mb-4 h-10 w-auto object-contain sm:h-12"
-            unoptimized
-          />
-          <h1 className="text-2xl font-black tracking-tight sm:text-[1.75rem]">
-            Book Your Appointment
+        <div className="bg-gradient-to-br from-brand-navy via-brand-blue to-brand-ink px-6 py-7 text-white sm:px-8">
+          <div className="flex items-start justify-between gap-4">
+            <Image
+              src="/orca-logo.png?v=5"
+              alt="ORCA IT"
+              width={220}
+              height={112}
+              className="h-10 w-auto object-contain sm:h-11"
+              unoptimized
+            />
+            <a
+              href={`tel:${ORCA_PHONE_TEL}`}
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-bold text-white backdrop-blur transition hover:bg-white/25"
+            >
+              <Phone className="size-3.5" />
+              {ORCA_PHONE_DISPLAY}
+            </a>
+          </div>
+          <h1 className="mt-5 text-2xl font-black tracking-tight sm:text-[1.75rem]">
+            Book online in minutes
           </h1>
-          <p className="mt-2 text-sm text-blue-100">
-            Fast online booking — pick a service, date and technician
+          <p className="mt-2 max-w-sm text-sm leading-6 text-blue-100">
+            Trusted local IT support — clear pricing, friendly technicians, and{" "}
+            <span className="font-semibold text-white">no solution, no fee</span>.
+          </p>
+
+          <ol className="mt-6 flex items-center gap-1.5" aria-label="Booking progress">
+            {progressSteps.map((key, index) => {
+              const done = index < activeStepIndex;
+              const active = index === activeStepIndex;
+              return (
+                <li key={key} className="flex min-w-0 flex-1 flex-col items-center gap-1.5">
+                  <span
+                    className={`h-1.5 w-full rounded-full transition ${
+                      done || active ? "bg-brand-sky" : "bg-white/25"
+                    }`}
+                  />
+                  <span
+                    className={`hidden text-[10px] font-bold uppercase tracking-wide sm:block ${
+                      active ? "text-white" : "text-white/55"
+                    }`}
+                  >
+                    {stepMeta[key].label}
+                  </span>
+                </li>
+              );
+            })}
+          </ol>
+          <p className="mt-3 text-xs font-semibold text-brand-sky sm:hidden">
+            Step {activeStepIndex + 1} of {progressSteps.length}: {currentMeta?.label}
           </p>
         </div>
       ) : null}
@@ -249,13 +333,15 @@ export function BookNowWizard() {
       <div className="px-6 py-7 sm:px-8 sm:py-8">
         {step === "postcode" ? (
           <div>
-            <h2 className="text-2xl font-extrabold text-brand-navy">Enter Your Postcode</h2>
-            <p className="mt-2 text-slate-600">
-              Enter your 4-digit postcode to check available services in your area
-            </p>
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+              <ShieldCheck className="size-3.5" />
+              Secure &amp; obligation-free
+            </div>
+            <h2 className="text-2xl font-extrabold text-brand-navy">{stepMeta.postcode.title}</h2>
+            <p className="mt-2 text-slate-600">{stepMeta.postcode.trust}</p>
             <label className="mt-6 block">
               <span className="mb-2 block text-sm font-bold text-brand-navy">
-                Postcode <span className="text-brand-fun">*</span>
+                Your postcode <span className="text-brand-fun">*</span>
               </span>
               <span className="relative block">
                 <MapPin className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
@@ -265,7 +351,7 @@ export function BookNowWizard() {
                     update("postcode", event.target.value.replace(/\D/g, "").slice(0, 4))
                   }
                   inputMode="numeric"
-                  placeholder="e.g., 4000"
+                  placeholder="e.g. 3000"
                   className="w-full rounded-lg border border-slate-300 py-3 pl-10 pr-4 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20"
                 />
               </span>
@@ -274,21 +360,27 @@ export function BookNowWizard() {
             <button
               type="button"
               onClick={continueFromPostcode}
-              className="mt-6 w-full rounded-lg bg-[#7eb6f5] py-3.5 text-base font-bold text-white transition hover:bg-brand-blue"
+              className="mt-6 w-full rounded-lg bg-brand-blue py-3.5 text-base font-bold text-white transition hover:bg-brand-navy"
             >
-              Continue
+              Check availability
             </button>
+            <p className="mt-4 text-center text-xs text-slate-500">
+              Prefer to speak with someone?{" "}
+              <a href={`tel:${ORCA_PHONE_TEL}`} className="font-bold text-brand-blue">
+                Call {ORCA_PHONE_DISPLAY}
+              </a>
+            </p>
           </div>
         ) : null}
 
         {step === "service" ? (
           <div>
-            <h2 className="text-2xl font-extrabold text-brand-navy">Select a Service</h2>
-            <p className="mt-2 text-slate-600">Choose a service available in your area.</p>
+            <h2 className="text-2xl font-extrabold text-brand-navy">{stepMeta.service.title}</h2>
+            <p className="mt-2 text-slate-600">{stepMeta.service.trust}</p>
             {!isMelbournePostcode(booking.postcode) ? (
               <p className="mt-3 rounded-lg bg-brand-mist px-4 py-3 text-sm text-brand-navy">
-                On-site Home Support is only available for Melbourne postcodes. Remote and
-                other services are still available for {booking.postcode}.
+                On-site Home Support is available in Melbourne. Remote support and other options
+                are still available for {booking.postcode}.
               </p>
             ) : null}
             <div className="mt-6 space-y-3">
@@ -332,8 +424,8 @@ export function BookNowWizard() {
 
         {step === "datetime" ? (
           <div>
-            <h2 className="text-2xl font-extrabold text-brand-navy">Choose Date &amp; Time</h2>
-            <p className="mt-2 text-slate-600">Select a date and time for your appointment.</p>
+            <h2 className="text-2xl font-extrabold text-brand-navy">{stepMeta.datetime.title}</h2>
+            <p className="mt-2 text-slate-600">{stepMeta.datetime.trust}</p>
 
             <div className="mt-6 flex items-center justify-between">
               <button
@@ -473,9 +565,9 @@ export function BookNowWizard() {
             <button
               type="button"
               onClick={continueFromDateTime}
-              className="mt-6 w-full rounded-lg bg-[#7eb6f5] py-3.5 text-base font-bold text-white transition hover:bg-brand-blue"
+              className="mt-6 w-full rounded-lg bg-brand-blue py-3.5 text-base font-bold text-white transition hover:bg-brand-navy"
             >
-              Continue
+              Continue to next step
             </button>
             <button
               type="button"
@@ -489,10 +581,8 @@ export function BookNowWizard() {
 
         {step === "address" ? (
           <div>
-            <h2 className="text-2xl font-extrabold text-brand-navy">Enter Your Address</h2>
-            <p className="mt-2 text-slate-600">
-              Please provide the address where our technician should attend.
-            </p>
+            <h2 className="text-2xl font-extrabold text-brand-navy">{stepMeta.address.title}</h2>
+            <p className="mt-2 text-slate-600">{stepMeta.address.trust}</p>
 
             <label className="mt-6 block">
               <span className="mb-2 block text-sm font-bold text-brand-navy">
@@ -526,9 +616,9 @@ export function BookNowWizard() {
             <button
               type="button"
               onClick={continueFromAddress}
-              className="mt-6 w-full rounded-lg bg-[#7eb6f5] py-3.5 text-base font-bold text-white transition hover:bg-brand-blue"
+              className="mt-6 w-full rounded-lg bg-brand-blue py-3.5 text-base font-bold text-white transition hover:bg-brand-navy"
             >
-              Continue
+              Continue to your details
             </button>
             <button
               type="button"
@@ -542,10 +632,8 @@ export function BookNowWizard() {
 
         {step === "details" ? (
           <div>
-            <h2 className="text-2xl font-extrabold text-brand-navy">Your Details</h2>
-            <p className="mt-2 text-slate-600">
-              Please provide your contact information to complete the booking.
-            </p>
+            <h2 className="text-2xl font-extrabold text-brand-navy">{stepMeta.details.title}</h2>
+            <p className="mt-2 text-slate-600">{stepMeta.details.trust}</p>
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <label className="block">
@@ -628,7 +716,7 @@ export function BookNowWizard() {
                 rows={4}
                 value={booking.helpNeeded}
                 onChange={(event) => update("helpNeeded", event.target.value)}
-                placeholder="Please describe what you need help with..."
+                placeholder="Tell us what's going wrong — the more detail, the faster we can help..."
                 className="w-full rounded-lg border border-slate-300 px-4 py-3 outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20"
               />
             </label>
@@ -667,8 +755,12 @@ export function BookNowWizard() {
               onClick={() => void submitBooking()}
               className="mt-6 w-full rounded-lg bg-emerald-500 py-3.5 text-base font-bold text-white transition hover:bg-emerald-600 disabled:opacity-70"
             >
-              {isSubmitting ? "Booking..." : "Book Now"}
+              {isSubmitting ? "Confirming your booking..." : "Confirm booking"}
             </button>
+            <p className="mt-3 text-center text-xs text-slate-500">
+              By booking, you agree we may contact you about this appointment.{" "}
+              <span className="font-semibold text-brand-navy">No solution, no fee.</span>
+            </p>
             <button
               type="button"
               onClick={goBack}
@@ -684,12 +776,12 @@ export function BookNowWizard() {
             <span className="mx-auto grid size-16 place-items-center rounded-full bg-emerald-100 text-emerald-600">
               <CheckCircle2 className="size-9" />
             </span>
-            <h2 className="mt-5 text-3xl font-extrabold text-brand-navy">Booking Confirmed!</h2>
+            <h2 className="mt-5 text-3xl font-extrabold text-brand-navy">You&apos;re booked in</h2>
             <p className="mt-3 text-slate-600">
-              Your appointment has been successfully booked.
+              Thanks for choosing Orca IT. Your appointment is confirmed
               {emailSent
-                ? ` A confirmation email has been sent to ${booking.email}.`
-                : ` We'll also contact you on ${booking.email}.`}
+                ? ` and a confirmation email is on its way to ${booking.email}.`
+                : ` — we&apos;ll also be in touch on ${booking.email}.`}
             </p>
             {!emailSent && emailNote ? (
               <p className="mt-2 text-xs text-slate-500">{emailNote}</p>
@@ -709,11 +801,18 @@ export function BookNowWizard() {
                   <span className="font-bold text-brand-navy">Time:</span> {booking.time}
                 </p>
                 <p>
-                  <span className="font-bold text-brand-navy">Staff:</span>{" "}
+                  <span className="font-bold text-brand-navy">Technician:</span>{" "}
                   {booking.staff?.name}
                 </p>
               </div>
             </div>
+
+            <p className="mt-5 text-sm text-slate-600">
+              Questions before your visit? Call{" "}
+              <a href={`tel:${ORCA_PHONE_TEL}`} className="font-bold text-brand-blue">
+                {ORCA_PHONE_DISPLAY}
+              </a>
+            </p>
 
             <button
               type="button"
