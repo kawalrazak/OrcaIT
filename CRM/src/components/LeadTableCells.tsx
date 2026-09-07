@@ -1,26 +1,20 @@
 import { CreditCard } from 'lucide-react';
 import type { Lead } from '../types';
 
-function statusBadgeClass(status: string) {
-  switch (status) {
-    case 'Converted':
-      return 'bg-slate-800 text-white';
-    case 'Appointment Done':
-      return 'bg-amber-400 text-white';
-    case 'Assigned':
-      return 'bg-brand-600 text-white';
-    case 'Missed':
-      return 'bg-red-500 text-white';
-    case 'Not Fixed':
+function outcomeBadgeClass(outcome: string) {
+  switch (outcome) {
+    case 'Resolved':
+    case 'Onsite Fixed':
+    case 'Customer Converted':
+      return 'bg-emerald-600 text-white';
+    case 'Appointment Booked':
+      return 'bg-sky-600 text-white';
+    case 'Not Converted':
+    case 'Missed Call':
       return 'bg-orange-500 text-white';
     default:
-      return 'bg-slate-500 text-white';
+      return 'bg-slate-600 text-white';
   }
-}
-
-function statusLabel(status: string) {
-  if (status === 'Converted') return 'Fixed';
-  return status;
 }
 
 interface LeadTableCellsProps {
@@ -30,6 +24,9 @@ interface LeadTableCellsProps {
 
 export function LeadTableCells({ lead, index }: LeadTableCellsProps) {
   const technicianLabel = lead.technician || lead.assignedClientName;
+  const outcome = lead.outcome?.trim() || '';
+  const showFollowUp = outcome === 'Follow Up';
+  const showOutcomeBadge = outcome !== '' && !showFollowUp;
 
   return (
     <>
@@ -80,7 +77,7 @@ export function LeadTableCells({ lead, index }: LeadTableCellsProps) {
             Time: {lead.technicianTimeDetail}
           </p>
         )}
-        {(lead.calloutFee != null && lead.calloutFee > 0) && (
+        {lead.calloutFee != null && lead.calloutFee > 0 && (
           <p className="mt-0.5 text-[10px] text-sky-600">
             Callout Fee: ${lead.calloutFee.toFixed(2)}
           </p>
@@ -120,11 +117,15 @@ export function LeadTableCells({ lead, index }: LeadTableCellsProps) {
       <td className="px-2 py-2 align-top">
         <p className="text-[10px] text-slate-800">{lead.date}</p>
         <div className="mt-1 flex flex-col items-start gap-1">
-          <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${statusBadgeClass(lead.status)}`}>
-            {statusLabel(lead.status)}
-          </span>
-          {lead.outcome === 'Follow Up' && (
-            <span className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-red-600 text-white shadow-sm ring-2 ring-red-200">
+          {showOutcomeBadge && (
+            <span
+              className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${outcomeBadgeClass(outcome)}`}
+            >
+              {outcome}
+            </span>
+          )}
+          {showFollowUp && (
+            <span className="rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm ring-2 ring-red-200">
               Follow Up
             </span>
           )}
