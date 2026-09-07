@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
-import { X, Send, User, Wrench, MapPin, Calendar, MessageSquare, Clock } from 'lucide-react';
+import { X, Send, User, Wrench, MapPin, Calendar, MessageSquare, Clock, FileText } from 'lucide-react';
 import {
+  buildInvoiceMessage,
+  buildOnlineQuoteMessage,
   buildQuoteMessage,
   defaultQuoteFees,
 } from '../utils/sms';
 import type { Lead } from '../types';
 
-export type MessageTarget = 'customer' | 'technician';
+export type MessageTarget = 'customer' | 'technician' | 'invoice' | 'quote';
 
 interface SendMessageModalProps {
   open: boolean;
@@ -34,14 +36,18 @@ export default function SendMessageModal({
   onMessageChange,
   onSend,
 }: SendMessageModalProps) {
-  const isCustomer = target === 'customer';
+  const isOnsiteQuote = target === 'customer';
+  const isOnlineQuote = target === 'quote';
+  const isInvoice = target === 'invoice';
+  const isTechnician = target === 'technician';
+  const isQuote = isOnsiteQuote || isOnlineQuote;
   const defaults = defaultQuoteFees(lead);
   const [visitTime, setVisitTime] = useState('');
   const [calloutFee, setCalloutFee] = useState(String(defaults.calloutFee));
   const [troubleshootingFee, setTroubleshootingFee] = useState(String(defaults.troubleshootingFee));
 
   useEffect(() => {
-    if (!open || !isCustomer) return;
+    if (!open) return;
 
     const fees = defaultQuoteFees(lead);
     const time =
@@ -53,16 +59,26 @@ export default function SendMessageModal({
     setCalloutFee(String(fees.calloutFee));
     setTroubleshootingFee(String(fees.troubleshootingFee));
 
-    onMessageChange(
-      buildQuoteMessage(lead, {
-        visitTime: time,
-        calloutFee: fees.calloutFee,
-        troubleshootingFee: fees.troubleshootingFee,
-      }),
-    );
-  }, [open, isCustomer, lead.id]);
+    if (isOnsiteQuote) {
+      onMessageChange(
+        buildQuoteMessage(lead, {
+          visitTime: time,
+          calloutFee: fees.calloutFee,
+          troubleshootingFee: fees.troubleshootingFee,
+        }),
+      );
+    } else if (isOnlineQuote) {
+      onMessageChange(
+        buildOnlineQuoteMessage(lead, {
+          troubleshootingFee: fees.troubleshootingFee,
+        }),
+      );
+    } else if (isInvoice) {
+      onMessageChange(buildInvoiceMessage(lead));
+    }
+  }, [open, target, lead.id]);
 
-  function applyQuoteTemplate(time: string, callout: string, troubleshooting: string) {
+  function applyOnsiteQuoteTemplate(time: string, callout: string, troubleshooting: string) {
     onMessageChange(
       buildQuoteMessage(lead, {
         visitTime: time,
@@ -72,24 +88,59 @@ export default function SendMessageModal({
     );
   }
 
+  function applyOnlineQuoteTemplate(troubleshooting: string) {
+    onMessageChange(
+      buildOnlineQuoteMessage(lead, {
+        troubleshootingFee: parseFloat(troubleshooting) || 149,
+      }),
+    );
+  }
+
   function handleVisitTimeChange(value: string) {
     setVisitTime(value);
-    applyQuoteTemplate(value, calloutFee, troubleshootingFee);
+    applyOnsiteQuoteTemplate(value, calloutFee, troubleshootingFee);
   }
 
   function handleCalloutChange(value: string) {
     setCalloutFee(value);
-    applyQuoteTemplate(visitTime, value, troubleshootingFee);
+    applyOnsiteQuoteTemplate(visitTime, value, troubleshootingFee);
   }
 
   function handleTroubleshootingChange(value: string) {
     setTroubleshootingFee(value);
-    applyQuoteTemplate(visitTime, calloutFee, value);
+    if (isOnlineQuote) {
+      applyOnlineQuoteTemplate(value);
+    } else {
+      applyOnsiteQuoteTemplate(visitTime, calloutFee, value);
+    }
   }
 
   if (!open) return null;
 
-  const canSendQuote = isCustomer ? visitTime.trim().length > 0 : true;
+  const canSendQuote = isOnsiteQuote ? visitTime.trim().length > 0 : true;
+  const headerTitle = isInvoice
+    ? 'Send Invoice'
+    : isOnlineQuote
+      ? 'Send Quote'
+      : isOnsiteQuote
+        ? 'Send Quote'
+        : 'Send to Technician';
+  const headerSubtitle = isInvoice
+    ? 'Invoice message auto-fills with customer name & amount'
+    : isQuote
+      ? 'Quote message auto-fills with customer name & fees'
+      : 'Review message details before sending';
+  const HeaderIcon = isInvoice ? FileText : isTechnician ? Wrench : User;
+  const headerGradient = isTechnician
+    ? 'bg-gradient-to-r from-emerald-600 to-emerald-700'
+    : isInvoice
+      ? 'bg-gradient-to-r from-violet-600 to-violet-700'
+      : 'bg-gradient-to-r from-blue-600 to-blue-700';
+  const sendLabel = isInvoice
+    ? 'Send Invoice'
+    : isQuote
+      ? 'Send Quote'
+      : 'Send Message';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -101,22 +152,14 @@ export default function SendMessageModal({
       />
 
       <div className="relative z-10 flex max-h-[92vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className={`flex shrink-0 items-center justify-between px-6 py-4 text-white ${
-          isCustomer ? 'bg-gradient-to-r from-blue-600 to-blue-700' : 'bg-gradient-to-r from-emerald-600 to-emerald-700'
-        }`}>
+        <div className={`flex shrink-0 items-center justify-between px-6 py-4 text-white ${headerGradient}`}>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
-              {isCustomer ? <User size={20} /> : <Wrench size={20} />}
+              <HeaderIcon size={20} />
             </div>
             <div>
-              <h2 className="text-lg font-semibold">
-                {isCustomer ? 'Send Quote' : 'Send to Technician'}
-              </h2>
-              <p className="text-sm text-white/80">
-                {isCustomer
-                  ? 'Quote message auto-fills with customer name & fees'
-                  : 'Review message details before sending'}
-              </p>
+              <h2 className="text-lg font-semibold">{headerTitle}</h2>
+              <p className="text-sm text-white/80">{headerSubtitle}</p>
             </div>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-1.5 transition hover:bg-white/20">
@@ -125,7 +168,7 @@ export default function SendMessageModal({
         </div>
 
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-6">
-          {isCustomer && (
+          {isOnsiteQuote && (
             <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-blue-700">Quote Details</p>
               <div className="grid gap-3 sm:grid-cols-3">
@@ -169,6 +212,25 @@ export default function SendMessageModal({
             </div>
           )}
 
+          {isOnlineQuote && (
+            <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-blue-700">Online Quote Details</p>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-700">Troubleshooting fee $/hr</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={troubleshootingFee}
+                  onChange={(e) => handleTroubleshootingChange(e.target.value)}
+                  className="input-field"
+                />
+              </div>
+              <p className="mt-2 text-[10px] text-slate-500">
+                Customer name ({lead.name.split(/\s+/)[0]}) is inserted automatically in the message below.
+              </p>
+            </div>
+          )}
+
           <div className="rounded-xl border border-slate-200 p-4">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">Lead Details</p>
             <div className="grid gap-2 text-sm">
@@ -200,7 +262,7 @@ export default function SendMessageModal({
                   <span className="max-w-[60%] text-right font-medium text-slate-800">{lead.appointmentDate}</span>
                 </div>
               )}
-              {!isCustomer && lead.assignedClientName && (
+              {isTechnician && lead.assignedClientName && (
                 <div className="flex justify-between gap-4">
                   <span className="text-slate-500">Technician</span>
                   <span className="font-medium text-slate-800">{lead.assignedClientName}</span>
@@ -212,12 +274,12 @@ export default function SendMessageModal({
           <div>
             <label className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700">
               <MessageSquare size={16} />
-              {isCustomer ? 'Quote Message' : 'Message'}
+              {isInvoice ? 'Invoice Message' : isQuote ? 'Quote Message' : 'Message'}
             </label>
             <textarea
               value={message}
               onChange={(e) => onMessageChange(e.target.value)}
-              rows={isCustomer ? 14 : 6}
+              rows={isQuote || isInvoice ? 14 : 6}
               className="input-field resize-none text-sm leading-relaxed"
               placeholder="Enter your message..."
             />
@@ -242,10 +304,16 @@ export default function SendMessageModal({
             type="button"
             onClick={onSend}
             disabled={sending || !message.trim() || !recipientPhone || !canSendQuote}
-            className={`btn-primary flex-1 ${isCustomer ? '' : '!bg-emerald-600 hover:!bg-emerald-700'}`}
+            className={`btn-primary flex-1 ${
+              isTechnician
+                ? '!bg-emerald-600 hover:!bg-emerald-700'
+                : isInvoice
+                  ? '!bg-violet-600 hover:!bg-violet-700'
+                  : ''
+            }`}
           >
             <Send size={16} />
-            {sending ? 'Sending...' : isCustomer ? 'Send Quote' : 'Send Message'}
+            {sending ? 'Sending...' : sendLabel}
           </button>
         </div>
       </div>

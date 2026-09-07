@@ -81,6 +81,7 @@ export interface Lead {
   sentStatus?: 'SENT' | 'PENDING';
   sentToCustomer?: boolean;
   sentToTechnician?: boolean;
+  sentInvoice?: boolean;
   technicianTimeDetail?: string;
   calloutFee?: number;
   troubleshootingFee?: number;

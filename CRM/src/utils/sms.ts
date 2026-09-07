@@ -51,6 +51,55 @@ You can choose to pay by cash or card.
 Thanks see you soon. 😊`;
 }
 
+export function buildOnlineQuoteMessage(
+  lead: { name: string },
+  options: { troubleshootingFee: number },
+): string {
+  const firstName = getFirstName(lead.name);
+
+  return `Hi ${firstName},
+
+Good afternoon, It was lovely talking to you today regarding your issue.
+
+For online/remote support, the troubleshooting charge is $${options.troubleshootingFee} per hour plus GST (Minimum 1 Hour, Non Refundable).
+
+Please reply to this message to confirm your appointment time.
+
+You can choose to pay by card or bank transfer.
+
+Thanks.`;
+}
+
+export function buildInvoiceMessage(
+  lead: {
+    name: string;
+    paymentAmount?: number;
+    troubleshootingFee?: number;
+    calloutFee?: number;
+  },
+): string {
+  const firstName = getFirstName(lead.name);
+  const amount =
+    (lead.paymentAmount && lead.paymentAmount > 0
+      ? lead.paymentAmount
+      : undefined) ??
+    (lead.troubleshootingFee && lead.troubleshootingFee > 0
+      ? lead.troubleshootingFee
+      : undefined) ??
+    (lead.calloutFee && lead.calloutFee > 0 ? lead.calloutFee : 0);
+  const amountText = amount > 0 ? `$${amount.toFixed(2)}` : 'as discussed';
+
+  return `Hi ${firstName},
+
+Thank you for choosing Orca IT.
+
+Your invoice amount is ${amountText} (plus GST where applicable).
+
+Please arrange payment at your earliest convenience. Reply to this message if you have any questions.
+
+Thanks, Orca IT`;
+}
+
 export function defaultQuoteFees(lead: { calloutFee?: number; troubleshootingFee?: number }) {
   return {
     calloutFee: lead.calloutFee && lead.calloutFee > 0 ? lead.calloutFee : 49,

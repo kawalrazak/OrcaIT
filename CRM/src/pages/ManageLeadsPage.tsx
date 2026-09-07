@@ -23,6 +23,8 @@ import { ISSUE_TYPES, DEVICE_TYPES, LEAD_STATUSES } from '../data/constants';
 import type { EditLeadForm, Lead, LeadFilters } from '../types';
 import {
   buildLeadMessage,
+  buildInvoiceMessage,
+  buildOnlineQuoteMessage,
   buildQuoteMessage,
   defaultQuoteFees,
   isValidAustralianNumber,
@@ -384,15 +386,16 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
   const technician = lead.assignedClientId ? getAccountById(lead.assignedClientId) : undefined;
 
   const recipient =
-    modalTarget === 'customer'
-      ? { name: lead.name, phone: lead.phone }
-      : {
+    modalTarget === 'technician'
+      ? {
           name: technician?.name || lead.assignedClientName || 'Technician',
           phone: technician?.phone?.trim() || '',
-        };
+        }
+      : { name: lead.name, phone: lead.phone };
 
   const customerSent = lead.sentToCustomer === true;
   const technicianSent = lead.sentToTechnician === true;
+  const invoiceSent = lead.sentInvoice === true;
 
   function handleSaveEdit(form: EditLeadForm) {
     const assigned = form.assignedClientId && canAssign
@@ -405,45 +408,47 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
     updateLead(lead.id, updates);
   }
 
+  function defaultMessageForTarget(target: MessageTarget) {
+    if (target === 'technician') return buildLeadMessage(lead);
+    if (target === 'invoice') return buildInvoiceMessage(lead);
+    if (target === 'quote') {
+      return buildOnlineQuoteMessage(lead, {
+        troubleshootingFee: defaultQuoteFees(lead).troubleshootingFee,
+      });
+    }
+    return buildQuoteMessage(lead, {
+      visitTime: lead.technicianTimeDetail || lead.appointmentDate || '',
+      ...defaultQuoteFees(lead),
+    });
+  }
+
   function openModal(target: MessageTarget) {
     if (target === 'customer' && customerSent) return;
     if (target === 'technician' && technicianSent) return;
+    if (target === 'invoice' && invoiceSent) return;
+    if (target === 'quote' && customerSent) return;
 
     const phone =
-      target === 'customer'
-        ? lead.phone
-        : technician?.phone?.trim() || '';
+      target === 'technician'
+        ? technician?.phone?.trim() || ''
+        : lead.phone;
 
     if (!phone || !isValidAustralianNumber(phone)) {
       setModalTarget(target);
-      setMessage(
-        target === 'customer'
-          ? buildQuoteMessage(lead, {
-              visitTime: lead.technicianTimeDetail || lead.appointmentDate || '',
-              ...defaultQuoteFees(lead),
-            })
-          : buildLeadMessage(lead),
-      );
+      setMessage(defaultMessageForTarget(target));
       setResult({
         type: 'error',
         text:
-          target === 'customer'
-            ? 'Customer does not have a valid Australian mobile number.'
-            : 'Technician does not have a valid phone number. Add it in Manage Technicians.',
+          target === 'technician'
+            ? 'Technician does not have a valid phone number. Add it in Manage Technicians.'
+            : 'Customer does not have a valid Australian mobile number.',
       });
       setModalOpen(true);
       return;
     }
 
     setModalTarget(target);
-    setMessage(
-      target === 'customer'
-        ? buildQuoteMessage(lead, {
-            visitTime: lead.technicianTimeDetail || lead.appointmentDate || '',
-            ...defaultQuoteFees(lead),
-          })
-        : buildLeadMessage(lead),
-    );
+    setMessage(defaultMessageForTarget(target));
     setResult(null);
     setModalOpen(true);
   }
@@ -471,17 +476,25 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
     try {
       const response = await sendSms(normalized, message.trim());
       if (response.ok) {
+        const sentFlags =
+          modalTarget === 'technician'
+            ? { sentToTechnician: true }
+            : modalTarget === 'invoice'
+              ? { sentInvoice: true }
+              : { sentToCustomer: true };
+
         updateLead(lead.id, {
           sentStatus: 'SENT',
-          ...(modalTarget === 'customer'
-            ? { sentToCustomer: true }
-            : { sentToTechnician: true }),
+          ...sentFlags,
         });
         setResult({
           type: 'success',
-          text: modalTarget === 'customer'
-            ? 'Quote sent to customer successfully.'
-            : 'Message sent to technician successfully.',
+          text:
+            modalTarget === 'technician'
+              ? 'Message sent to technician successfully.'
+              : modalTarget === 'invoice'
+                ? 'Invoice sent to customer successfully.'
+                : 'Quote sent to customer successfully.',
         });
         setTimeout(closeModal, 1500);
       } else {
@@ -506,8 +519,8 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
           onToggleHistory={() => setHistoryOpen((open) => !open)}
         />
         <td className="bg-slate-100 px-0 py-2 align-top">
-          <div className={`grid divide-x divide-slate-200 ${lead.isOnsite ? 'grid-cols-[1fr_auto]' : 'grid-cols-1'}`}>
-            {lead.isOnsite && (
+          <div className="grid grid-cols-[1fr_auto] divide-x divide-slate-200">
+            {lead.isOnsite ? (
               <div className="space-y-0.5 px-1.5">
                 <button
                   type="button"
@@ -534,6 +547,33 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
                   {technicianSent ? 'Sent' : 'Technician'}
                 </button>
               </div>
+            ) : (
+              <div className="space-y-0.5 px-1.5">
+                <button
+                  type="button"
+                  onClick={() => openModal('invoice')}
+                  disabled={invoiceSent}
+                  className={`w-full rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${
+                    invoiceSent
+                      ? 'cursor-not-allowed bg-slate-300 text-slate-500'
+                      : 'bg-slate-600 text-white hover:bg-slate-700'
+                  }`}
+                >
+                  {invoiceSent ? 'Invoice Sent' : 'Send Invoice'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openModal('quote')}
+                  disabled={customerSent}
+                  className={`w-full rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${
+                    customerSent
+                      ? 'cursor-not-allowed bg-slate-300 text-slate-500'
+                      : 'bg-slate-600 text-white hover:bg-slate-700'
+                  }`}
+                >
+                  {customerSent ? 'Quote Sent' : 'Send Quote'}
+                </button>
+              </div>
             )}
             <div className="flex flex-col items-center gap-1 px-1.5 pt-0.5">
               <div className="flex items-start justify-center gap-1">
@@ -558,24 +598,43 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
                   </button>
                 )}
               </div>
-              {lead.isOnsite && (
-                <div className="w-full space-y-0.5 text-center">
-                  <p
-                    className={`text-[8px] font-semibold ${
-                      customerSent ? 'text-emerald-600' : 'text-amber-600'
-                    }`}
-                  >
-                    Cust: {customerSent ? 'Sent' : 'Not Sent'}
-                  </p>
-                  <p
-                    className={`text-[8px] font-semibold ${
-                      technicianSent ? 'text-emerald-600' : 'text-amber-600'
-                    }`}
-                  >
-                    Tech: {technicianSent ? 'Sent' : 'Not Sent'}
-                  </p>
-                </div>
-              )}
+              <div className="w-full space-y-0.5 text-center">
+                {lead.isOnsite ? (
+                  <>
+                    <p
+                      className={`text-[8px] font-semibold ${
+                        customerSent ? 'text-emerald-600' : 'text-amber-600'
+                      }`}
+                    >
+                      Cust: {customerSent ? 'Sent' : 'Not Sent'}
+                    </p>
+                    <p
+                      className={`text-[8px] font-semibold ${
+                        technicianSent ? 'text-emerald-600' : 'text-amber-600'
+                      }`}
+                    >
+                      Tech: {technicianSent ? 'Sent' : 'Not Sent'}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p
+                      className={`text-[8px] font-semibold ${
+                        invoiceSent ? 'text-emerald-600' : 'text-amber-600'
+                      }`}
+                    >
+                      Inv: {invoiceSent ? 'Sent' : 'Not Sent'}
+                    </p>
+                    <p
+                      className={`text-[8px] font-semibold ${
+                        customerSent ? 'text-emerald-600' : 'text-amber-600'
+                      }`}
+                    >
+                      Quote: {customerSent ? 'Sent' : 'Not Sent'}
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </td>

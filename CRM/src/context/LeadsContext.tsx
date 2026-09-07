@@ -137,6 +137,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         sentStatus: 'PENDING',
         sentToCustomer: false,
         sentToTechnician: false,
+        sentInvoice: false,
       };
 
       setLeads((prev) => {
