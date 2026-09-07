@@ -20,6 +20,8 @@ export const DEVICE_TYPES = [
   'Others',
 ];
 
+export const APPOINTMENT_TYPES = ['Online', 'Onsite'] as const;
+
 export const OUTCOMES = [
   'Resolved',
   'Onsite Fixed',

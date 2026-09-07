@@ -3,6 +3,7 @@ import {
   PlusCircle,
   List,
   CalendarCheck,
+  Monitor,
   LogOut,
   LayoutDashboard,
   Users,
@@ -17,6 +18,7 @@ const allNav = [
   { path: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { path: '/add-lead', label: 'Add Leads', icon: PlusCircle },
   { path: '/manage-leads', label: 'Manage Leads', icon: List },
+  { path: '/online-appointments', label: 'Online Appointments', icon: Monitor },
   { path: '/onsite-appointments', label: 'Onsite Appointments', icon: CalendarCheck },
   { path: '/manage-clients', label: 'Manage Users', icon: Users },
 ];

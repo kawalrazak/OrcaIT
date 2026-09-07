@@ -10,6 +10,7 @@ import DashboardPage from './pages/DashboardPage';
 import AddLeadPage from './pages/AddLeadPage';
 import ManageLeadsPage from './pages/ManageLeadsPage';
 import OnsiteAppointmentsPage from './pages/OnsiteAppointmentsPage';
+import OnlineAppointmentsPage from './pages/OnlineAppointmentsPage';
 import ManageClientsPage from './pages/ManageClientsPage';
 import MyTasksPage from './pages/MyTasksPage';
 import SettingsPage from './pages/SettingsPage';
@@ -55,6 +56,7 @@ export default function App() {
                 <Route path="/my-tasks" element={<PermissionRoute path="/my-tasks"><MyTasksPage /></PermissionRoute>} />
                 <Route path="/add-lead" element={<PermissionRoute path="/add-lead"><AddLeadPage /></PermissionRoute>} />
                 <Route path="/manage-leads" element={<PermissionRoute path="/manage-leads"><ManageLeadsPage /></PermissionRoute>} />
+                <Route path="/online-appointments" element={<PermissionRoute path="/online-appointments"><OnlineAppointmentsPage /></PermissionRoute>} />
                 <Route path="/onsite-appointments" element={<PermissionRoute path="/onsite-appointments"><OnsiteAppointmentsPage /></PermissionRoute>} />
                 <Route path="/manage-clients" element={<ManageUsersRoute><ManageClientsPage /></ManageUsersRoute>} />
                 <Route path="/settings" element={<SettingsPage />} />

@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState, type ReactNode } from 'react';
 import { FileEdit, Save, X } from 'lucide-react';
 import DateInput from './DateInput';
-import { ISSUE_TYPES, DEVICE_TYPES, OUTCOMES } from '../data/constants';
+import { ISSUE_TYPES, DEVICE_TYPES, OUTCOMES, APPOINTMENT_TYPES } from '../data/constants';
 import { leadToEditForm } from '../utils/leadForm';
 import type { Account, EditLeadForm, Lead } from '../types';
 
@@ -63,7 +63,7 @@ export default function EditLeadModal({
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!form) return;
+    if (!form || !form.appointmentType) return;
     setSaving(true);
     setTimeout(() => {
       onSave(form);
@@ -237,6 +237,20 @@ export default function EditLeadModal({
               </select>
             </FormRow>
 
+            <FormRow label="Appointment Type *">
+              <select
+                value={form.appointmentType}
+                onChange={(e) => updateField('appointmentType', e.target.value)}
+                required
+                className="w-full rounded border border-slate-300 px-2 py-1.5 text-xs text-slate-800 focus:border-brand-500 focus:outline-none"
+              >
+                <option value="">- Select Online or Onsite -</option>
+                {APPOINTMENT_TYPES.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </FormRow>
+
             <FormRow label="Customer Issue" fullWidth>
               <textarea
                 value={form.customerIssue}
@@ -259,8 +273,8 @@ export default function EditLeadModal({
           <div className="flex items-center gap-2 border-t border-slate-200 bg-slate-100 px-4 py-3">
             <button
               type="submit"
-              disabled={saving}
-              className="rounded bg-brand-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+              disabled={saving || !form.appointmentType}
+              className="rounded bg-brand-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               <Save size={14} className="mr-1 inline" />
               {saving ? 'Saving...' : 'Save Changes'}

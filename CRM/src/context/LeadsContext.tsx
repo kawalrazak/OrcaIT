@@ -132,7 +132,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         leadUser: user?.name ?? 'Admin',
         assignedClientId: client?.id ?? '',
         assignedClientName: client?.name ?? '',
-        isOnsite: form.issueType.includes('Onsite'),
+        isOnsite: form.appointmentType === 'Onsite',
         outcome: form.outcome,
         sentStatus: 'PENDING',
         sentToCustomer: false,

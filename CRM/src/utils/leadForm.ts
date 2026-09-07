@@ -22,6 +22,7 @@ export function leadToEditForm(lead: Lead): EditLeadForm {
           : '',
     issueType: lead.issueType || '',
     deviceType: lead.deviceType || '',
+    appointmentType: lead.isOnsite ? 'Onsite' : 'Online',
     customerIssue: lead.issueDescription || '',
     finalComments: lead.comment || '',
   };
@@ -54,7 +55,7 @@ export function editFormToLeadUpdates(
     assignedClientId: technician?.id ?? '',
     assignedClientName: technician?.name ?? '',
     technician: technician?.name ?? '',
-    isOnsite: form.issueType.includes('Onsite') || form.outcome.includes('Onsite'),
+    isOnsite: form.appointmentType === 'Onsite',
   };
 
   if (technician?.id) {

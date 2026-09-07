@@ -10,6 +10,7 @@ export interface Permissions {
   viewAddLead: boolean;
   viewManageLeads: boolean;
   viewOnsiteAppointments: boolean;
+  viewOnlineAppointments: boolean;
   viewMyTasks: boolean;
   editLeads: boolean;
   deleteLeads: boolean;
@@ -117,6 +118,7 @@ export interface AddLeadForm {
   outcome: string;
   issueType: string;
   deviceType: string;
+  appointmentType: string;
   customerIssue: string;
   finalComments: string;
   assignedClientId: string;
@@ -137,6 +139,7 @@ export interface EditLeadForm {
   troubleshootingFee: string;
   issueType: string;
   deviceType: string;
+  appointmentType: string;
   customerIssue: string;
   finalComments: string;
 }

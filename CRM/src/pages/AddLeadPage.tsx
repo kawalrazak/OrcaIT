@@ -7,7 +7,7 @@ import { useAccounts } from '../context/AccountsContext';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
 import DateInput from '../components/DateInput';
-import { ISSUE_TYPES, DEVICE_TYPES, OUTCOMES } from '../data/constants';
+import { ISSUE_TYPES, DEVICE_TYPES, OUTCOMES, APPOINTMENT_TYPES } from '../data/constants';
 import type { AddLeadForm } from '../types';
 
 const emptyForm: AddLeadForm = {
@@ -20,6 +20,7 @@ const emptyForm: AddLeadForm = {
   outcome: 'Not Converted',
   issueType: '',
   deviceType: '',
+  appointmentType: '',
   customerIssue: '',
   finalComments: '',
   assignedClientId: '',
@@ -59,8 +60,14 @@ export default function AddLeadPage() {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
+  const canSave = Boolean(form.appointmentType);
+
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!form.appointmentType) {
+      setError('Please select Online or Onsite before saving.');
+      return;
+    }
     setError('');
     setSaving(true);
 
@@ -181,6 +188,20 @@ export default function AddLeadPage() {
               </select>
             </Field>
 
+            <Field label="Appointment Type *">
+              <select
+                value={form.appointmentType}
+                onChange={(e) => updateField('appointmentType', e.target.value)}
+                className={fieldClass}
+                required
+              >
+                <option value="">- Select Online or Onsite -</option>
+                {APPOINTMENT_TYPES.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </Field>
+
             {canAssign && (
               <Field label="Assign Technician" className="col-span-2 lg:col-span-4">
                 <select
@@ -230,7 +251,7 @@ export default function AddLeadPage() {
           </div>
 
           <div className="mt-2 flex shrink-0 items-center gap-2 border-t border-slate-100 pt-2">
-            <button type="submit" disabled={saving} className="btn-primary py-1.5">
+            <button type="submit" disabled={saving || !canSave} className="btn-primary py-1.5">
               <Save size={14} />
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
