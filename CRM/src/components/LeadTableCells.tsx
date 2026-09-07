@@ -1,4 +1,4 @@
-import { CreditCard } from 'lucide-react';
+import { List } from 'lucide-react';
 import type { Lead } from '../types';
 
 function outcomeBadgeClass(outcome: string) {
@@ -20,9 +20,16 @@ function outcomeBadgeClass(outcome: string) {
 interface LeadTableCellsProps {
   lead: Lead;
   index: number;
+  historyOpen?: boolean;
+  onToggleHistory?: () => void;
 }
 
-export function LeadTableCells({ lead, index }: LeadTableCellsProps) {
+export function LeadTableCells({
+  lead,
+  index,
+  historyOpen = false,
+  onToggleHistory,
+}: LeadTableCellsProps) {
   const technicianLabel = lead.technician || lead.assignedClientName;
   const outcome = lead.outcome?.trim() || '';
   const showFollowUp = outcome === 'Follow Up';
@@ -36,7 +43,22 @@ export function LeadTableCells({ lead, index }: LeadTableCellsProps) {
             <span className="text-[10px] text-slate-600">{index}.</span>
             <input type="checkbox" className="h-3 w-3 rounded border-slate-300" />
           </div>
-          <CreditCard size={12} className="text-slate-400" />
+          {onToggleHistory ? (
+            <button
+              type="button"
+              onClick={onToggleHistory}
+              title={historyOpen ? 'Hide lead history' : 'Show lead history'}
+              className={`mt-0.5 inline-flex rounded p-0.5 transition-colors ${
+                historyOpen
+                  ? 'bg-brand-100 text-brand-700'
+                  : 'text-slate-500 hover:bg-slate-100 hover:text-brand-600'
+              }`}
+            >
+              <List size={14} />
+            </button>
+          ) : (
+            <List size={12} className="text-slate-400" />
+          )}
         </div>
       </td>
 

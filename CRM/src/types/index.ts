@@ -43,6 +43,16 @@ export interface User {
   lastLogin: string;
 }
 
+export interface LeadHistoryEntry {
+  id: string;
+  user: string;
+  comment: string;
+  farTech: 'Yes' | 'No';
+  date: string;
+  issueStatus?: string;
+  leadStatus?: string;
+}
+
 export interface Lead {
   id: string;
   name: string;
@@ -74,6 +84,8 @@ export interface Lead {
   technicianTimeDetail?: string;
   calloutFee?: number;
   troubleshootingFee?: number;
+  farFromTech?: boolean;
+  history?: LeadHistoryEntry[];
   /** Present when the lead came from the marketing website */
   webSource?: 'chat' | 'booking-form' | 'book-now' | string;
   submittedAt?: string;

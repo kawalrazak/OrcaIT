@@ -13,6 +13,7 @@ import SendMessageModal, { type MessageTarget } from '../components/SendMessageM
 import EditLeadModal from '../components/EditLeadModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { LeadTableCells } from '../components/LeadTableCells';
+import LeadInlineHistory from '../components/LeadInlineHistory';
 import { useLeads } from '../context/LeadsContext';
 import { useAccounts } from '../context/AccountsContext';
 import { useAuth } from '../context/AuthContext';
@@ -371,6 +372,7 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
   const canEdit = hasPermission(user?.permissions, 'editLeads', user?.role);
   const canDelete = hasPermission(user?.permissions, 'deleteLeads', user?.role);
   const canAssign = hasPermission(user?.permissions, 'assignTechnicians', user?.role);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -497,7 +499,12 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
   return (
     <>
       <tr className="transition-colors hover:bg-slate-50/50">
-        <LeadTableCells lead={lead} index={index} />
+        <LeadTableCells
+          lead={lead}
+          index={index}
+          historyOpen={historyOpen}
+          onToggleHistory={() => setHistoryOpen((open) => !open)}
+        />
         <td className="bg-slate-100 px-0 py-2 align-top">
           <div className="grid grid-cols-[1fr_auto] divide-x divide-slate-200">
             <div className="space-y-0.5 px-1.5">
@@ -569,6 +576,19 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
           </div>
         </td>
       </tr>
+
+      {historyOpen && (
+        <tr>
+          <td colSpan={8} className="bg-slate-50 px-3 py-3">
+            <LeadInlineHistory
+              lead={lead}
+              canEdit={canEdit}
+              currentUserName={user?.name ?? 'Staff'}
+              onSave={(updates) => updateLead(lead.id, updates)}
+            />
+          </td>
+        </tr>
+      )}
 
       <ConfirmModal
         open={deleteOpen}

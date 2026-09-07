@@ -10,7 +10,10 @@ import {
 import Breadcrumbs from '../components/Breadcrumbs';
 import DateInput from '../components/DateInput';
 import { LeadTableCells } from '../components/LeadTableCells';
+import LeadInlineHistory from '../components/LeadInlineHistory';
 import { useLeads } from '../context/LeadsContext';
+import { useAuth } from '../context/AuthContext';
+import { hasPermission } from '../utils/permissions';
 import { LEAD_STATUSES, PAYMENT_METHODS } from '../data/constants';
 import type { Lead, OnsiteFilters } from '../types';
 import { useAccounts } from '../context/AccountsContext';
@@ -341,25 +344,49 @@ export default function OnlineAppointmentsPage() {
 }
 
 function OnlineRow({ lead, index }: { lead: Lead; index: number }) {
+  const { updateLead } = useLeads();
+  const { user } = useAuth();
+  const canEdit = hasPermission(user?.permissions, 'editLeads', user?.role);
+  const [historyOpen, setHistoryOpen] = useState(false);
+
   return (
-    <tr className="transition-colors hover:bg-slate-50/50">
-      <LeadTableCells lead={lead} index={index} />
-      <td className="px-3 py-3 align-top">
-        <div className="space-y-1">
-          {['Not Converted', 'Missed Call', 'Customer Converted'].map((action) => (
-            <button key={action} className="block text-xs text-slate-500 underline hover:text-brand-600">{action}</button>
-          ))}
-        </div>
-        <button className="mt-2 flex h-7 w-7 items-center justify-center rounded-lg bg-brand-600 text-white hover:bg-brand-700">
-          <Pencil size={13} />
-        </button>
-        {lead.assignedTo && <p className="mt-1.5 text-xs font-bold italic text-green-700">{lead.assignedTo}</p>}
-        {lead.sentStatus && (
-          <span className={`mt-1 inline-block text-xs font-bold ${lead.sentStatus === 'SENT' ? 'text-emerald-600' : 'text-amber-600'}`}>
-            {lead.sentStatus}
-          </span>
-        )}
-      </td>
-    </tr>
+    <>
+      <tr className="transition-colors hover:bg-slate-50/50">
+        <LeadTableCells
+          lead={lead}
+          index={index}
+          historyOpen={historyOpen}
+          onToggleHistory={() => setHistoryOpen((open) => !open)}
+        />
+        <td className="px-3 py-3 align-top">
+          <div className="space-y-1">
+            {['Not Converted', 'Missed Call', 'Customer Converted'].map((action) => (
+              <button key={action} className="block text-xs text-slate-500 underline hover:text-brand-600">{action}</button>
+            ))}
+          </div>
+          <button className="mt-2 flex h-7 w-7 items-center justify-center rounded-lg bg-brand-600 text-white hover:bg-brand-700">
+            <Pencil size={13} />
+          </button>
+          {lead.assignedTo && <p className="mt-1.5 text-xs font-bold italic text-green-700">{lead.assignedTo}</p>}
+          {lead.sentStatus && (
+            <span className={`mt-1 inline-block text-xs font-bold ${lead.sentStatus === 'SENT' ? 'text-emerald-600' : 'text-amber-600'}`}>
+              {lead.sentStatus}
+            </span>
+          )}
+        </td>
+      </tr>
+      {historyOpen && (
+        <tr>
+          <td colSpan={8} className="bg-slate-50 px-3 py-3">
+            <LeadInlineHistory
+              lead={lead}
+              canEdit={canEdit}
+              currentUserName={user?.name ?? 'Staff'}
+              onSave={(updates) => updateLead(lead.id, updates)}
+            />
+          </td>
+        </tr>
+      )}
+    </>
   );
 }

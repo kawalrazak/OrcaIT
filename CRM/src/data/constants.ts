@@ -40,6 +40,8 @@ export const LEAD_STATUSES = [
   'Missed',
 ];
 
+export const FAR_TECH_OPTIONS = ['No', 'Yes'] as const;
+
 export const PAYMENT_METHODS = ['Card', 'Cash', 'Bank Transfer', 'PayPal'];
 
 export const LEADS_STORAGE_KEY = 'careit_leads';
