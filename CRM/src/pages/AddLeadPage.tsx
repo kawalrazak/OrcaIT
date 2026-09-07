@@ -17,7 +17,7 @@ const emptyForm: AddLeadForm = {
   phoneNumber: '',
   customerAddress: '',
   postCode: '',
-  outcome: '',
+  outcome: 'Not Converted',
   issueType: '',
   deviceType: '',
   customerIssue: '',

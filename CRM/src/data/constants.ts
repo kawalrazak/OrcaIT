@@ -7,6 +7,7 @@ export const ISSUE_TYPES = [
   'Computer/Laptop',
   'Network',
   'Software',
+  'Web development',
 ];
 
 export const DEVICE_TYPES = [
