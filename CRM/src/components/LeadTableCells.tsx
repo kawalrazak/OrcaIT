@@ -119,26 +119,16 @@ export function LeadTableCells({ lead, index }: LeadTableCellsProps) {
 
       <td className="px-2 py-2 align-top">
         <p className="text-[10px] text-slate-800">{lead.date}</p>
-        <div className="mt-1 flex flex-wrap gap-1">
+        <div className="mt-1 flex flex-col items-start gap-1">
           <span className={`rounded px-1.5 py-0.5 text-[9px] font-semibold ${statusBadgeClass(lead.status)}`}>
             {statusLabel(lead.status)}
           </span>
+          {lead.outcome === 'Follow Up' && (
+            <span className="rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide bg-red-600 text-white shadow-sm ring-2 ring-red-200">
+              Follow Up
+            </span>
+          )}
         </div>
-        {lead.sentToCustomer && (
-          <p className="mt-0.5 text-[9px] text-slate-600">Customer: Sent</p>
-        )}
-        {lead.sentToTechnician && (
-          <p className="mt-0.5 text-[9px] text-slate-600">Technician: Sent</p>
-        )}
-        {!lead.sentToCustomer && !lead.sentToTechnician && lead.sentStatus === 'SENT' && (
-          <p className="mt-0.5 text-[9px] text-slate-600">Message Sent</p>
-        )}
-        {!lead.sentToCustomer && !lead.sentToTechnician && lead.sentStatus === 'PENDING' && (
-          <p className="mt-0.5 text-[9px] text-amber-600">Not Sent</p>
-        )}
-        {(lead.sentToCustomer || lead.sentToTechnician) && (
-          <p className="mt-0.5 text-[9px] text-slate-600">Appointment Sent</p>
-        )}
         {lead.assignedTo && (
           <p className="mt-0.5 text-[9px] italic text-slate-800">{lead.assignedTo}</p>
         )}

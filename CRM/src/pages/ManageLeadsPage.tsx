@@ -526,27 +526,45 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
                 {technicianSent ? 'Sent' : 'Technician'}
               </button>
             </div>
-            <div className="flex items-start justify-center gap-1 px-1.5 pt-0.5">
-              {canEdit && (
-                <button
-                  type="button"
-                  onClick={() => setEditOpen(true)}
-                  title="Edit lead details"
-                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-sky-400 text-white shadow-sm transition-colors hover:bg-sky-500"
+            <div className="flex flex-col items-center gap-1 px-1.5 pt-0.5">
+              <div className="flex items-start justify-center gap-1">
+                {canEdit && (
+                  <button
+                    type="button"
+                    onClick={() => setEditOpen(true)}
+                    title="Edit lead details"
+                    className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-sky-400 text-white shadow-sm transition-colors hover:bg-sky-500"
+                  >
+                    <SquarePen size={10} />
+                  </button>
+                )}
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={() => setDeleteOpen(true)}
+                    title="Delete lead"
+                    className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-red-500 text-white shadow-sm transition-colors hover:bg-red-600"
+                  >
+                    <Trash2 size={10} />
+                  </button>
+                )}
+              </div>
+              <div className="w-full space-y-0.5 text-center">
+                <p
+                  className={`text-[8px] font-semibold ${
+                    customerSent ? 'text-emerald-600' : 'text-amber-600'
+                  }`}
                 >
-                  <SquarePen size={10} />
-                </button>
-              )}
-              {canDelete && (
-                <button
-                  type="button"
-                  onClick={() => setDeleteOpen(true)}
-                  title="Delete lead"
-                  className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-red-500 text-white shadow-sm transition-colors hover:bg-red-600"
+                  Cust: {customerSent ? 'Sent' : 'Not Sent'}
+                </p>
+                <p
+                  className={`text-[8px] font-semibold ${
+                    technicianSent ? 'text-emerald-600' : 'text-amber-600'
+                  }`}
                 >
-                  <Trash2 size={10} />
-                </button>
-              )}
+                  Tech: {technicianSent ? 'Sent' : 'Not Sent'}
+                </p>
+              </div>
             </div>
           </div>
         </td>
