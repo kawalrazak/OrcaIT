@@ -9,13 +9,15 @@ import {
 } from 'lucide-react';
 import Breadcrumbs from '../components/Breadcrumbs';
 import DateInput from '../components/DateInput';
+import EditLeadModal from '../components/EditLeadModal';
 import { LeadTableCells } from '../components/LeadTableCells';
 import LeadInlineHistory from '../components/LeadInlineHistory';
 import { useLeads } from '../context/LeadsContext';
 import { useAuth } from '../context/AuthContext';
 import { hasPermission } from '../utils/permissions';
+import { editFormToLeadUpdates } from '../utils/leadForm';
 import { LEAD_STATUSES, PAYMENT_METHODS } from '../data/constants';
-import type { Lead, OnsiteFilters } from '../types';
+import type { EditLeadForm, Lead, OnsiteFilters } from '../types';
 import { useAccounts } from '../context/AccountsContext';
 
 const emptyFilters: OnsiteFilters = {
@@ -345,9 +347,23 @@ export default function OnlineAppointmentsPage() {
 
 function OnlineRow({ lead, index }: { lead: Lead; index: number }) {
   const { updateLead } = useLeads();
+  const { getAccountById, technicianAccounts } = useAccounts();
   const { user } = useAuth();
   const canEdit = hasPermission(user?.permissions, 'editLeads', user?.role);
+  const canAssign = hasPermission(user?.permissions, 'assignTechnicians', user?.role);
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+
+  function handleSaveEdit(form: EditLeadForm) {
+    const assigned = form.assignedClientId && canAssign
+      ? getAccountById(form.assignedClientId)
+      : null;
+    const updates = editFormToLeadUpdates(
+      canAssign ? form : { ...form, assignedClientId: lead.assignedClientId },
+      assigned,
+    );
+    updateLead(lead.id, updates);
+  }
 
   return (
     <>
@@ -361,12 +377,19 @@ function OnlineRow({ lead, index }: { lead: Lead; index: number }) {
         <td className="px-3 py-3 align-top">
           <div className="space-y-1">
             {['Not Converted', 'Missed Call', 'Customer Converted'].map((action) => (
-              <button key={action} className="block text-xs text-slate-500 underline hover:text-brand-600">{action}</button>
+              <button key={action} type="button" className="block text-xs text-slate-500 underline hover:text-brand-600">{action}</button>
             ))}
           </div>
-          <button className="mt-2 flex h-7 w-7 items-center justify-center rounded-lg bg-brand-600 text-white hover:bg-brand-700">
-            <Pencil size={13} />
-          </button>
+          {canEdit && (
+            <button
+              type="button"
+              onClick={() => setEditOpen(true)}
+              title="Edit lead details"
+              className="mt-2 flex h-7 w-7 items-center justify-center rounded-lg bg-brand-600 text-white hover:bg-brand-700"
+            >
+              <Pencil size={13} />
+            </button>
+          )}
           {lead.assignedTo && <p className="mt-1.5 text-xs font-bold italic text-green-700">{lead.assignedTo}</p>}
           {lead.sentStatus && (
             <span className={`mt-1 inline-block text-xs font-bold ${lead.sentStatus === 'SENT' ? 'text-emerald-600' : 'text-amber-600'}`}>
@@ -387,6 +410,14 @@ function OnlineRow({ lead, index }: { lead: Lead; index: number }) {
           </td>
         </tr>
       )}
+      <EditLeadModal
+        open={editOpen}
+        lead={lead}
+        technicians={technicianAccounts}
+        canAssign={canAssign}
+        onClose={() => setEditOpen(false)}
+        onSave={handleSaveEdit}
+      />
     </>
   );
 }

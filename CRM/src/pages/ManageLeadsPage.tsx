@@ -506,33 +506,35 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
           onToggleHistory={() => setHistoryOpen((open) => !open)}
         />
         <td className="bg-slate-100 px-0 py-2 align-top">
-          <div className="grid grid-cols-[1fr_auto] divide-x divide-slate-200">
-            <div className="space-y-0.5 px-1.5">
-              <button
-                type="button"
-                onClick={() => openModal('customer')}
-                disabled={customerSent}
-                className={`w-full rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${
-                  customerSent
-                    ? 'cursor-not-allowed bg-slate-300 text-slate-500'
-                    : 'bg-slate-600 text-white hover:bg-slate-700'
-                }`}
-              >
-                {customerSent ? 'Quote Sent' : 'Send Quote'}
-              </button>
-              <button
-                type="button"
-                onClick={() => openModal('technician')}
-                disabled={technicianSent}
-                className={`w-full rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${
-                  technicianSent
-                    ? 'cursor-not-allowed bg-slate-300 text-slate-500'
-                    : 'bg-slate-600 text-white hover:bg-slate-700'
-                }`}
-              >
-                {technicianSent ? 'Sent' : 'Technician'}
-              </button>
-            </div>
+          <div className={`grid divide-x divide-slate-200 ${lead.isOnsite ? 'grid-cols-[1fr_auto]' : 'grid-cols-1'}`}>
+            {lead.isOnsite && (
+              <div className="space-y-0.5 px-1.5">
+                <button
+                  type="button"
+                  onClick={() => openModal('customer')}
+                  disabled={customerSent}
+                  className={`w-full rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${
+                    customerSent
+                      ? 'cursor-not-allowed bg-slate-300 text-slate-500'
+                      : 'bg-slate-600 text-white hover:bg-slate-700'
+                  }`}
+                >
+                  {customerSent ? 'Quote Sent' : 'Send Quote'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openModal('technician')}
+                  disabled={technicianSent}
+                  className={`w-full rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${
+                    technicianSent
+                      ? 'cursor-not-allowed bg-slate-300 text-slate-500'
+                      : 'bg-slate-600 text-white hover:bg-slate-700'
+                  }`}
+                >
+                  {technicianSent ? 'Sent' : 'Technician'}
+                </button>
+              </div>
+            )}
             <div className="flex flex-col items-center gap-1 px-1.5 pt-0.5">
               <div className="flex items-start justify-center gap-1">
                 {canEdit && (
@@ -556,22 +558,24 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
                   </button>
                 )}
               </div>
-              <div className="w-full space-y-0.5 text-center">
-                <p
-                  className={`text-[8px] font-semibold ${
-                    customerSent ? 'text-emerald-600' : 'text-amber-600'
-                  }`}
-                >
-                  Cust: {customerSent ? 'Sent' : 'Not Sent'}
-                </p>
-                <p
-                  className={`text-[8px] font-semibold ${
-                    technicianSent ? 'text-emerald-600' : 'text-amber-600'
-                  }`}
-                >
-                  Tech: {technicianSent ? 'Sent' : 'Not Sent'}
-                </p>
-              </div>
+              {lead.isOnsite && (
+                <div className="w-full space-y-0.5 text-center">
+                  <p
+                    className={`text-[8px] font-semibold ${
+                      customerSent ? 'text-emerald-600' : 'text-amber-600'
+                    }`}
+                  >
+                    Cust: {customerSent ? 'Sent' : 'Not Sent'}
+                  </p>
+                  <p
+                    className={`text-[8px] font-semibold ${
+                      technicianSent ? 'text-emerald-600' : 'text-amber-600'
+                    }`}
+                  >
+                    Tech: {technicianSent ? 'Sent' : 'Not Sent'}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </td>
