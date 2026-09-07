@@ -11,6 +11,7 @@ import Breadcrumbs from '../components/Breadcrumbs';
 import DateInput from '../components/DateInput';
 import SendMessageModal, { type MessageTarget } from '../components/SendMessageModal';
 import EditLeadModal from '../components/EditLeadModal';
+import ConfirmModal from '../components/ConfirmModal';
 import { LeadTableCells } from '../components/LeadTableCells';
 import { useLeads } from '../context/LeadsContext';
 import { useAccounts } from '../context/AccountsContext';
@@ -372,6 +373,7 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
   const canAssign = hasPermission(user?.permissions, 'assignTechnicians', user?.role);
   const [modalOpen, setModalOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [modalTarget, setModalTarget] = useState<MessageTarget>('customer');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -538,11 +540,7 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
               {canDelete && (
                 <button
                   type="button"
-                  onClick={() => {
-                    if (confirm(`Delete lead for "${lead.name}"? This cannot be undone.`)) {
-                      deleteLead(lead.id);
-                    }
-                  }}
+                  onClick={() => setDeleteOpen(true)}
                   title="Delete lead"
                   className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-sm bg-red-500 text-white shadow-sm transition-colors hover:bg-red-600"
                 >
@@ -553,6 +551,17 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
           </div>
         </td>
       </tr>
+
+      <ConfirmModal
+        open={deleteOpen}
+        title="Delete lead"
+        message={`Delete lead for "${lead.name}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        tone="danger"
+        onClose={() => setDeleteOpen(false)}
+        onConfirm={() => deleteLead(lead.id)}
+      />
 
       <EditLeadModal
         open={editOpen}
