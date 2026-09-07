@@ -17,7 +17,6 @@ export const DEVICE_TYPES = [
   'Mobile',
   'Printer',
   'Router',
-  'Other',
   'Others',
 ];
 
