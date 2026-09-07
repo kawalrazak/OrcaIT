@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { X, Send, User, Wrench, MapPin, Calendar, MessageSquare, Clock, FileText } from 'lucide-react';
+import { X, Send, User, Wrench, MapPin, Calendar, MessageSquare, Clock, FileText, Link2 } from 'lucide-react';
 import {
   buildInvoiceMessage,
   buildOnlineQuoteMessage,
   buildQuoteMessage,
+  defaultInvoiceAmount,
   defaultQuoteFees,
 } from '../utils/sms';
 import type { Lead } from '../types';
@@ -22,6 +23,12 @@ interface SendMessageModalProps {
   onClose: () => void;
   onMessageChange: (value: string) => void;
   onSend: () => void;
+  invoiceAmount?: string;
+  onInvoiceAmountChange?: (value: string) => void;
+  invoicePaymentUrl?: string;
+  invoiceReferenceId?: string;
+  creatingCheckout?: boolean;
+  onCreateCheckout?: () => void;
 }
 
 export default function SendMessageModal({
@@ -35,6 +42,12 @@ export default function SendMessageModal({
   onClose,
   onMessageChange,
   onSend,
+  invoiceAmount,
+  onInvoiceAmountChange,
+  invoicePaymentUrl,
+  invoiceReferenceId,
+  creatingCheckout = false,
+  onCreateCheckout,
 }: SendMessageModalProps) {
   const isOnsiteQuote = target === 'customer';
   const isOnlineQuote = target === 'quote';
@@ -74,9 +87,28 @@ export default function SendMessageModal({
         }),
       );
     } else if (isInvoice) {
-      onMessageChange(buildInvoiceMessage(lead));
+      const amount = Number(invoiceAmount) || defaultInvoiceAmount(lead);
+      onMessageChange(
+        buildInvoiceMessage(lead, {
+          amountDollars: amount,
+          paymentUrl: invoicePaymentUrl,
+          referenceId: invoiceReferenceId,
+        }),
+      );
     }
   }, [open, target, lead.id]);
+
+  useEffect(() => {
+    if (!open || !isInvoice) return;
+    const amount = Number(invoiceAmount) || 0;
+    onMessageChange(
+      buildInvoiceMessage(lead, {
+        amountDollars: amount,
+        paymentUrl: invoicePaymentUrl,
+        referenceId: invoiceReferenceId,
+      }),
+    );
+  }, [invoiceAmount, invoicePaymentUrl, invoiceReferenceId, isInvoice, open, lead]);
 
   function applyOnsiteQuoteTemplate(time: string, callout: string, troubleshooting: string) {
     onMessageChange(
@@ -118,6 +150,9 @@ export default function SendMessageModal({
   if (!open) return null;
 
   const canSendQuote = isOnsiteQuote ? visitTime.trim().length > 0 : true;
+  const canSendInvoice = isInvoice
+    ? Number(invoiceAmount) > 0 && Boolean(invoicePaymentUrl?.trim())
+    : true;
   const headerTitle = isInvoice
     ? 'Send Invoice'
     : isOnlineQuote
@@ -126,7 +161,7 @@ export default function SendMessageModal({
         ? 'Send Quote'
         : 'Send to Technician';
   const headerSubtitle = isInvoice
-    ? 'Invoice message auto-fills with customer name & amount'
+    ? 'Creates a Zeller checkout link, then sends it by SMS'
     : isQuote
       ? 'Quote message auto-fills with customer name & fees'
       : 'Review message details before sending';
@@ -137,7 +172,7 @@ export default function SendMessageModal({
       ? 'bg-gradient-to-r from-violet-600 to-violet-700'
       : 'bg-gradient-to-r from-blue-600 to-blue-700';
   const sendLabel = isInvoice
-    ? 'Send Invoice'
+    ? 'Send Invoice SMS'
     : isQuote
       ? 'Send Quote'
       : 'Send Message';
@@ -206,9 +241,6 @@ export default function SendMessageModal({
                   />
                 </div>
               </div>
-              <p className="mt-2 text-[10px] text-slate-500">
-                Customer name ({lead.name.split(/\s+/)[0]}) is inserted automatically in the message below.
-              </p>
             </div>
           )}
 
@@ -225,9 +257,55 @@ export default function SendMessageModal({
                   className="input-field"
                 />
               </div>
-              <p className="mt-2 text-[10px] text-slate-500">
-                Customer name ({lead.name.split(/\s+/)[0]}) is inserted automatically in the message below.
+            </div>
+          )}
+
+          {isInvoice && (
+            <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-violet-700">
+                Zeller Checkout Session
               </p>
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">Invoice amount $ AUD *</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={invoiceAmount ?? ''}
+                    onChange={(e) => onInvoiceAmountChange?.(e.target.value)}
+                    className="input-field"
+                    placeholder="e.g. 149.00"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={onCreateCheckout}
+                  disabled={creatingCheckout || !(Number(invoiceAmount) > 0)}
+                  className="btn-secondary w-full"
+                >
+                  <Link2 size={14} />
+                  {creatingCheckout
+                    ? 'Creating Zeller link...'
+                    : invoicePaymentUrl
+                      ? 'Refresh Zeller payment link'
+                      : 'Create Zeller payment link'}
+                </button>
+                {invoiceReferenceId && (
+                  <p className="text-[11px] text-slate-600">
+                    Reference: <span className="font-semibold">{invoiceReferenceId}</span>
+                  </p>
+                )}
+                {invoicePaymentUrl ? (
+                  <p className="break-all rounded-lg bg-white px-3 py-2 text-[11px] text-violet-700 ring-1 ring-violet-200">
+                    {invoicePaymentUrl}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-amber-700">
+                    Create a Zeller payment link before sending the invoice SMS.
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -303,7 +381,14 @@ export default function SendMessageModal({
           <button
             type="button"
             onClick={onSend}
-            disabled={sending || !message.trim() || !recipientPhone || !canSendQuote}
+            disabled={
+              sending ||
+              creatingCheckout ||
+              !message.trim() ||
+              !recipientPhone ||
+              !canSendQuote ||
+              !canSendInvoice
+            }
             className={`btn-primary flex-1 ${
               isTechnician
                 ? '!bg-emerald-600 hover:!bg-emerald-700'

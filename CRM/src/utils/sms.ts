@@ -77,9 +77,17 @@ export function buildInvoiceMessage(
     troubleshootingFee?: number;
     calloutFee?: number;
   },
+  options?: {
+    amountDollars?: number;
+    paymentUrl?: string;
+    referenceId?: string;
+  },
 ): string {
   const firstName = getFirstName(lead.name);
   const amount =
+    (options?.amountDollars && options.amountDollars > 0
+      ? options.amountDollars
+      : undefined) ??
     (lead.paymentAmount && lead.paymentAmount > 0
       ? lead.paymentAmount
       : undefined) ??
@@ -88,16 +96,40 @@ export function buildInvoiceMessage(
       : undefined) ??
     (lead.calloutFee && lead.calloutFee > 0 ? lead.calloutFee : 0);
   const amountText = amount > 0 ? `$${amount.toFixed(2)}` : 'as discussed';
+  const paymentUrl = options?.paymentUrl?.trim() || '';
+  const reference = options?.referenceId?.trim() || '';
 
-  return `Hi ${firstName},
+  const lines = [
+    `Hi ${firstName},`,
+    '',
+    'Thank you for choosing Orca IT.',
+    '',
+    `Your invoice amount is ${amountText} AUD (plus GST where applicable).`,
+  ];
 
-Thank you for choosing Orca IT.
+  if (reference) {
+    lines.push(`Invoice reference: ${reference}`);
+  }
 
-Your invoice amount is ${amountText} (plus GST where applicable).
+  if (paymentUrl) {
+    lines.push('', 'Pay securely online with Zeller:', paymentUrl);
+  } else {
+    lines.push('', 'Please arrange payment at your earliest convenience.');
+  }
 
-Please arrange payment at your earliest convenience. Reply to this message if you have any questions.
+  lines.push('', 'Reply to this message if you have any questions.', '', 'Thanks, Orca IT');
+  return lines.join('\n');
+}
 
-Thanks, Orca IT`;
+export function defaultInvoiceAmount(lead: {
+  paymentAmount?: number;
+  troubleshootingFee?: number;
+  calloutFee?: number;
+}) {
+  if (lead.paymentAmount && lead.paymentAmount > 0) return lead.paymentAmount;
+  if (lead.troubleshootingFee && lead.troubleshootingFee > 0) return lead.troubleshootingFee;
+  if (lead.calloutFee && lead.calloutFee > 0) return lead.calloutFee;
+  return 0;
 }
 
 export function defaultQuoteFees(lead: { calloutFee?: number; troubleshootingFee?: number }) {

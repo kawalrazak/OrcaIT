@@ -5,12 +5,14 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   type ReactNode,
 } from 'react';
 import type { Lead, AddLeadForm } from '../types';
 import { LEADS_STORAGE_KEY } from '../data/constants';
 import { useAuth } from './AuthContext';
 import { useAccounts } from './AccountsContext';
+import { fetchZellerInvoices } from '../utils/zeller';
 
 interface LeadsContextType {
   leads: Lead[];
@@ -59,6 +61,8 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   const { user, isTechnician } = useAuth();
   const { getAccountById } = useAccounts();
   const [leads, setLeads] = useState<Lead[]>(loadLeads);
+  const leadsRef = useRef(leads);
+  leadsRef.current = leads;
 
   useEffect(() => {
     saveLeads(leads);
@@ -88,6 +92,64 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
     syncWebsiteLeads();
     const interval = window.setInterval(syncWebsiteLeads, 10000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function syncZellerInvoiceStatus() {
+      try {
+        const pendingIds = leadsRef.current
+          .filter(
+            (lead) =>
+              Boolean(lead.zellerReferenceId) ||
+              lead.invoiceStatus === 'sent' ||
+              lead.invoiceStatus === 'pending' ||
+              lead.sentInvoice === true,
+          )
+          .map((lead) => lead.id);
+        if (pendingIds.length === 0) return;
+
+        const invoices = await fetchZellerInvoices(pendingIds);
+        if (cancelled || invoices.length === 0) return;
+
+        const paidByLead = new Map(
+          invoices
+            .filter((invoice) => invoice.status === 'paid')
+            .map((invoice) => [invoice.leadId, invoice]),
+        );
+        if (paidByLead.size === 0) return;
+
+        setLeads((prev) => {
+          let changed = false;
+          const updated = prev.map((lead) => {
+            const paid = paidByLead.get(lead.id);
+            if (!paid || lead.invoiceStatus === 'paid') return lead;
+            changed = true;
+            return {
+              ...lead,
+              sentInvoice: true,
+              invoiceStatus: 'paid' as const,
+              invoicePaidAt: paid.paidAt || new Date().toISOString(),
+              zellerReferenceId: paid.referenceId || lead.zellerReferenceId,
+              zellerPaymentUrl: paid.paymentUrl || lead.zellerPaymentUrl,
+            };
+          });
+          if (!changed) return prev;
+          saveLeads(updated);
+          return updated;
+        });
+      } catch {
+        // ignore offline / missing API during local frontend-only runs
+      }
+    }
+
+    syncZellerInvoiceStatus();
+    const interval = window.setInterval(syncZellerInvoiceStatus, 10000);
     return () => {
       cancelled = true;
       window.clearInterval(interval);

@@ -87,6 +87,12 @@ export interface Lead {
   troubleshootingFee?: number;
   farFromTech?: boolean;
   history?: LeadHistoryEntry[];
+  invoiceNumber?: string;
+  invoiceStatus?: 'pending' | 'sent' | 'paid';
+  invoicePaidAt?: string;
+  zellerSessionId?: string;
+  zellerReferenceId?: string;
+  zellerPaymentUrl?: string;
   /** Present when the lead came from the marketing website */
   webSource?: 'chat' | 'booking-form' | 'book-now' | string;
   submittedAt?: string;

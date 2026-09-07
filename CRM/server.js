@@ -6,6 +6,12 @@ import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import twilio from 'twilio';
 import { createLeadsStore } from './leads-db.js';
+import { createZellerInvoicesStore } from './zeller-invoices-db.js';
+import {
+  createCheckoutSession,
+  parseZellerWebhookEvent,
+  verifyZellerWebhookSignature,
+} from './zeller.js';
 
 dotenv.config();
 
@@ -13,12 +19,22 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distPath = path.join(__dirname, 'dist');
 const dataDir = path.join(__dirname, 'data');
 const leadsStore = createLeadsStore({ dataDir });
+const zellerInvoicesStore = createZellerInvoicesStore({ dataDir });
 const isProduction =
   process.env.NODE_ENV === 'production' ||
   (process.env.NODE_ENV !== 'development' && existsSync(path.join(distPath, 'index.html')));
 
 const app = express();
-app.use(express.json({ limit: '1mb' }));
+app.use(
+  express.json({
+    limit: '1mb',
+    verify: (req, _res, buf) => {
+      if (req.originalUrl?.startsWith('/api/zeller/webhook')) {
+        req.rawBody = buf;
+      }
+    },
+  }),
+);
 
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -299,6 +315,157 @@ app.post('/api/send-sms', async (req, res) => {
   }
 });
 
+function invoiceAmountDollars(body = {}) {
+  const direct = Number(body.amount);
+  if (Number.isFinite(direct) && direct > 0) return direct;
+  return 0;
+}
+
+app.post('/api/zeller/checkout-session', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const leadId = asString(body.leadId);
+    const amountDollars = invoiceAmountDollars(body);
+    const customerName = asString(body.customerName);
+    const customerPhone = asString(body.customerPhone);
+    const customerEmail = asString(body.customerEmail);
+    const description = asString(body.description);
+
+    if (!leadId) {
+      return res.status(400).json({ ok: false, error: 'leadId is required.' });
+    }
+    if (amountDollars <= 0) {
+      return res.status(400).json({ ok: false, error: 'A valid invoice amount is required.' });
+    }
+
+    const referenceId =
+      asString(body.referenceId) ||
+      `INV-${leadId.slice(0, 8).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+
+    const session = await createCheckoutSession({
+      amountDollars,
+      referenceId,
+      description: description || `Orca IT invoice for ${customerName || 'customer'}`,
+      customer: {
+        name: customerName,
+        phone: customerPhone,
+        email: customerEmail,
+      },
+      metadata: { lead_id: leadId },
+    });
+
+    if (!session.ok) {
+      return res.status(502).json({ ok: false, error: session.error, raw: session.raw });
+    }
+
+    const invoiceRecord = {
+      id: randomUUID(),
+      leadId,
+      referenceId: session.referenceId,
+      sessionId: session.sessionId,
+      amountCents: session.amountCents,
+      currency: session.currency,
+      paymentUrl: session.paymentUrl,
+      status: 'pending',
+      customerName,
+      customerPhone,
+      customerEmail,
+      createdAt: new Date().toISOString(),
+      payload: session.raw,
+    };
+
+    zellerInvoicesStore.insertInvoice(invoiceRecord);
+
+    return res.json({
+      ok: true,
+      mock: Boolean(session.mock),
+      invoice: {
+        id: invoiceRecord.id,
+        leadId,
+        referenceId: session.referenceId,
+        sessionId: session.sessionId,
+        amountCents: session.amountCents,
+        amountDollars: session.amountCents / 100,
+        currency: session.currency,
+        paymentUrl: session.paymentUrl,
+        status: 'pending',
+      },
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to create Zeller checkout session.';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+app.get('/api/zeller/invoices', (req, res) => {
+  try {
+    const leadIds = String(req.query.leadIds || '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+    const invoices = zellerInvoicesStore.listByLeadIds(leadIds);
+    return res.json({ ok: true, invoices });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to load invoices.';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+app.post('/api/zeller/webhook', async (req, res) => {
+  try {
+    const signature =
+      req.headers['x-zeller-signature'] ||
+      req.headers['x-webhook-signature'] ||
+      req.headers['stripe-signature'];
+
+    const rawBody = req.rawBody || Buffer.from(JSON.stringify(req.body || {}));
+    if (!verifyZellerWebhookSignature(rawBody, signature)) {
+      return res.status(401).json({ ok: false, error: 'Invalid webhook signature.' });
+    }
+
+    const event = parseZellerWebhookEvent(req.body || {});
+    if (!event.succeeded) {
+      return res.json({ ok: true, ignored: true, type: event.type });
+    }
+
+    const paid = zellerInvoicesStore.markPaid({
+      referenceId: event.referenceId,
+      sessionId: event.sessionId,
+      payload: event.raw,
+    });
+
+    if (!paid) {
+      return res.status(404).json({
+        ok: false,
+        error: 'No matching invoice for this payment event.',
+        referenceId: event.referenceId,
+        sessionId: event.sessionId,
+      });
+    }
+
+    // Best-effort: if this lead exists in website SQLite store, mark invoice paid there too.
+    await withLeadsLock(async () => {
+      await leadsStore.updateLead(paid.leadId, {
+        invoiceStatus: 'paid',
+        invoicePaidAt: paid.paidAt,
+        zellerReferenceId: paid.referenceId,
+        zellerPaymentUrl: paid.paymentUrl,
+        sentInvoice: true,
+      });
+    }).catch(() => undefined);
+
+    return res.json({
+      ok: true,
+      paid: true,
+      leadId: paid.leadId,
+      referenceId: paid.referenceId,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Webhook processing failed.';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
 if (isProduction) {
   app.use(express.static(distPath));
 
@@ -310,8 +477,10 @@ if (isProduction) {
 const port = Number(process.env.PORT || 3001);
 
 await leadsStore.init();
+await zellerInvoicesStore.init();
 console.log(`[leads-db] SQLite: ${leadsStore.paths.dbPath}`);
 console.log(`[leads-db] CSV export: ${leadsStore.paths.csvPath}`);
+console.log(`[zeller] invoices: ${zellerInvoicesStore.paths.dbPath}`);
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`CareIT CRM server running on http://0.0.0.0:${port}`);

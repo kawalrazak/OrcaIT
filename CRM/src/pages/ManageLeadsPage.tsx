@@ -26,11 +26,14 @@ import {
   buildInvoiceMessage,
   buildOnlineQuoteMessage,
   buildQuoteMessage,
+  defaultInvoiceAmount,
   defaultQuoteFees,
   isValidAustralianNumber,
   normalizeAustralianNumber,
   sendSms,
 } from '../utils/sms';
+import { createZellerCheckoutSession } from '../utils/zeller';
+import type { ZellerCheckoutInvoice } from '../utils/zeller';
 const emptyFilters: LeadFilters = {
   name: '',
   phone: '',
@@ -382,6 +385,9 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [invoiceAmount, setInvoiceAmount] = useState(String(defaultInvoiceAmount(lead) || ''));
+  const [creatingCheckout, setCreatingCheckout] = useState(false);
+  const [checkoutInvoice, setCheckoutInvoice] = useState<ZellerCheckoutInvoice | null>(null);
 
   const technician = lead.assignedClientId ? getAccountById(lead.assignedClientId) : undefined;
 
@@ -395,7 +401,8 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
 
   const customerSent = lead.sentToCustomer === true;
   const technicianSent = lead.sentToTechnician === true;
-  const invoiceSent = lead.sentInvoice === true;
+  const invoiceSent = lead.sentInvoice === true || lead.invoiceStatus === 'sent' || lead.invoiceStatus === 'paid';
+  const invoicePaid = lead.invoiceStatus === 'paid';
 
   function handleSaveEdit(form: EditLeadForm) {
     const assigned = form.assignedClientId && canAssign
@@ -410,7 +417,13 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
 
   function defaultMessageForTarget(target: MessageTarget) {
     if (target === 'technician') return buildLeadMessage(lead);
-    if (target === 'invoice') return buildInvoiceMessage(lead);
+    if (target === 'invoice') {
+      return buildInvoiceMessage(lead, {
+        amountDollars: Number(invoiceAmount) || defaultInvoiceAmount(lead),
+        paymentUrl: checkoutInvoice?.paymentUrl || lead.zellerPaymentUrl,
+        referenceId: checkoutInvoice?.referenceId || lead.zellerReferenceId,
+      });
+    }
     if (target === 'quote') {
       return buildOnlineQuoteMessage(lead, {
         troubleshootingFee: defaultQuoteFees(lead).troubleshootingFee,
@@ -433,6 +446,25 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
         ? technician?.phone?.trim() || ''
         : lead.phone;
 
+    if (target === 'invoice') {
+      setInvoiceAmount(String(defaultInvoiceAmount(lead) || lead.paymentAmount || ''));
+      setCheckoutInvoice(
+        lead.zellerPaymentUrl
+          ? {
+              id: lead.zellerSessionId || '',
+              leadId: lead.id,
+              referenceId: lead.zellerReferenceId || '',
+              sessionId: lead.zellerSessionId || '',
+              amountCents: Math.round((defaultInvoiceAmount(lead) || 0) * 100),
+              amountDollars: defaultInvoiceAmount(lead) || 0,
+              currency: 'AUD',
+              paymentUrl: lead.zellerPaymentUrl,
+              status: lead.invoiceStatus || 'pending',
+            }
+          : null,
+      );
+    }
+
     if (!phone || !isValidAustralianNumber(phone)) {
       setModalTarget(target);
       setMessage(defaultMessageForTarget(target));
@@ -453,9 +485,55 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
     setModalOpen(true);
   }
 
+  async function handleCreateCheckout() {
+    const amount = Number(invoiceAmount);
+    if (!(amount > 0)) {
+      setResult({ type: 'error', text: 'Enter a valid invoice amount before creating a Zeller link.' });
+      return;
+    }
+
+    setCreatingCheckout(true);
+    setResult(null);
+    try {
+      const response = await createZellerCheckoutSession({
+        leadId: lead.id,
+        amount,
+        customerName: lead.name,
+        customerPhone: lead.phone,
+        customerEmail: lead.email,
+        description: `Orca IT invoice — ${lead.name} — ${lead.issueType || 'support'}`,
+      });
+
+      if (!response.ok || !response.invoice) {
+        setResult({ type: 'error', text: response.error || 'Failed to create Zeller checkout session.' });
+        return;
+      }
+
+      setCheckoutInvoice(response.invoice);
+      setMessage(
+        buildInvoiceMessage(lead, {
+          amountDollars: response.invoice.amountDollars,
+          paymentUrl: response.invoice.paymentUrl,
+          referenceId: response.invoice.referenceId,
+        }),
+      );
+      setResult({
+        type: 'success',
+        text: response.mock
+          ? 'Mock Zeller payment link created. Configure ZELLER_API_KEY for live checkout.'
+          : 'Zeller payment link created. Review the SMS and send.',
+      });
+    } catch {
+      setResult({ type: 'error', text: 'Unable to reach Zeller checkout API.' });
+    } finally {
+      setCreatingCheckout(false);
+    }
+  }
+
   function closeModal() {
     setModalOpen(false);
     setSending(false);
+    setCreatingCheckout(false);
     setResult(null);
   }
 
@@ -469,6 +547,10 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
       setResult({ type: 'error', text: 'Message cannot be empty.' });
       return;
     }
+    if (modalTarget === 'invoice' && !checkoutInvoice?.paymentUrl) {
+      setResult({ type: 'error', text: 'Create a Zeller payment link before sending.' });
+      return;
+    }
 
     setSending(true);
     setResult(null);
@@ -476,24 +558,30 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
     try {
       const response = await sendSms(normalized, message.trim());
       if (response.ok) {
-        const sentFlags =
-          modalTarget === 'technician'
-            ? { sentToTechnician: true }
-            : modalTarget === 'invoice'
-              ? { sentInvoice: true }
-              : { sentToCustomer: true };
+        if (modalTarget === 'technician') {
+          updateLead(lead.id, { sentStatus: 'SENT', sentToTechnician: true });
+        } else if (modalTarget === 'invoice') {
+          updateLead(lead.id, {
+            sentStatus: 'SENT',
+            sentInvoice: true,
+            invoiceStatus: 'sent',
+            invoiceNumber: checkoutInvoice?.referenceId,
+            zellerReferenceId: checkoutInvoice?.referenceId,
+            zellerSessionId: checkoutInvoice?.sessionId,
+            zellerPaymentUrl: checkoutInvoice?.paymentUrl,
+            paymentAmount: checkoutInvoice?.amountDollars ?? (Number(invoiceAmount) || undefined),
+          });
+        } else {
+          updateLead(lead.id, { sentStatus: 'SENT', sentToCustomer: true });
+        }
 
-        updateLead(lead.id, {
-          sentStatus: 'SENT',
-          ...sentFlags,
-        });
         setResult({
           type: 'success',
           text:
             modalTarget === 'technician'
               ? 'Message sent to technician successfully.'
               : modalTarget === 'invoice'
-                ? 'Invoice sent to customer successfully.'
+                ? 'Invoice SMS with Zeller pay link sent successfully.'
                 : 'Quote sent to customer successfully.',
         });
         setTimeout(closeModal, 1500);
@@ -559,7 +647,7 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
                       : 'bg-slate-600 text-white hover:bg-slate-700'
                   }`}
                 >
-                  {invoiceSent ? 'Invoice Sent' : 'Send Invoice'}
+                  {invoicePaid ? 'Invoice Paid' : invoiceSent ? 'Invoice Sent' : 'Send Invoice'}
                 </button>
                 <button
                   type="button"
@@ -620,10 +708,14 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
                   <>
                     <p
                       className={`text-[8px] font-semibold ${
-                        invoiceSent ? 'text-emerald-600' : 'text-amber-600'
+                        invoicePaid
+                          ? 'text-emerald-700'
+                          : invoiceSent
+                            ? 'text-emerald-600'
+                            : 'text-amber-600'
                       }`}
                     >
-                      Inv: {invoiceSent ? 'Sent' : 'Not Sent'}
+                      Inv: {invoicePaid ? 'Paid' : invoiceSent ? 'Sent' : 'Not Sent'}
                     </p>
                     <p
                       className={`text-[8px] font-semibold ${
@@ -685,6 +777,15 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
         onClose={closeModal}
         onMessageChange={setMessage}
         onSend={handleSend}
+        invoiceAmount={invoiceAmount}
+        onInvoiceAmountChange={(value) => {
+          setInvoiceAmount(value);
+          setCheckoutInvoice(null);
+        }}
+        invoicePaymentUrl={checkoutInvoice?.paymentUrl}
+        invoiceReferenceId={checkoutInvoice?.referenceId}
+        creatingCheckout={creatingCheckout}
+        onCreateCheckout={handleCreateCheckout}
       />
     </>
   );
