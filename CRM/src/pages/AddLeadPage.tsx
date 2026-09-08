@@ -62,7 +62,7 @@ export default function AddLeadPage() {
 
   const canSave = Boolean(form.appointmentType);
 
-  function handleSubmit(e: FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!form.appointmentType) {
       setError('Please select Online or Onsite before saving.');
@@ -71,16 +71,19 @@ export default function AddLeadPage() {
     setError('');
     setSaving(true);
 
-    setTimeout(() => {
+    try {
       const payload = canAssign ? form : { ...form, assignedClientId: '' };
-      const result = addLead(payload);
+      const result = await addLead(payload);
       if (result.success) {
         navigate('/manage-leads');
       } else {
         setError(result.error ?? 'Failed to save lead.');
       }
+    } catch {
+      setError('Failed to save lead.');
+    } finally {
       setSaving(false);
-    }, 400);
+    }
   }
 
   return (

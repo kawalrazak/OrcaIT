@@ -245,6 +245,61 @@ app.post('/api/leads', async (req, res) => {
   }
 });
 
+/** Full CRM lead document — used for Add Lead + migrating browser localStorage leads into SQLite. */
+app.post('/api/leads/crm', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const id = asString(body.id);
+    const name = asString(body.name);
+    const phone = asString(body.phone);
+
+    if (!id || !name || !phone) {
+      return res.status(400).json({ ok: false, error: 'id, name, and phone are required.' });
+    }
+
+    const lead = {
+      ...body,
+      id,
+      name,
+      phone,
+      submittedAt: asString(body.submittedAt) || new Date().toISOString(),
+    };
+
+    const saved = await withLeadsLock(async () => leadsStore.upsertLead(lead));
+    return res.status(201).json({ ok: true, lead: saved });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to save CRM lead.';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
+app.post('/api/leads/sync', async (req, res) => {
+  try {
+    const incoming = Array.isArray(req.body?.leads) ? req.body.leads : [];
+    await withLeadsLock(async () => {
+      for (const item of incoming) {
+        const id = asString(item?.id);
+        const name = asString(item?.name);
+        const phone = asString(item?.phone);
+        if (!id || !name || !phone) continue;
+        await leadsStore.upsertLead({
+          ...item,
+          id,
+          name,
+          phone,
+          submittedAt: asString(item.submittedAt) || new Date().toISOString(),
+        });
+      }
+    });
+
+    const leads = leadsStore.getAllLeads();
+    return res.json({ ok: true, leads, synced: incoming.length });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to sync leads.';
+    return res.status(500).json({ ok: false, error: message });
+  }
+});
+
 app.put('/api/leads/:id', async (req, res) => {
   try {
     const updates = req.body || {};

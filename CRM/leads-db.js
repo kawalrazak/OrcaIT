@@ -185,6 +185,18 @@ export function createLeadsStore({ dataDir }) {
     return lead;
   }
 
+  async function upsertLead(lead) {
+    if (!lead?.id) {
+      throw new Error('Lead id is required.');
+    }
+
+    const existing = openDb().prepare('SELECT id FROM leads WHERE id = ?').get(lead.id);
+    if (existing) {
+      return updateLead(lead.id, lead);
+    }
+    return insertLead(lead);
+  }
+
   async function updateLead(id, updates) {
     const existing = openDb().prepare('SELECT payload FROM leads WHERE id = ?').get(id);
     if (!existing) return null;
@@ -228,6 +240,7 @@ export function createLeadsStore({ dataDir }) {
     init,
     getAllLeads,
     insertLead,
+    upsertLead,
     updateLead,
     deleteLead,
     paths: { dbPath, csvPath, legacyJsonPath },

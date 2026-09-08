@@ -14,89 +14,148 @@ import { useAuth } from './AuthContext';
 import { useAccounts } from './AccountsContext';
 import { fetchZellerInvoices } from '../utils/zeller';
 
+const LEADS_MIGRATION_KEY = 'careit_leads_synced_to_server_v1';
+
 interface LeadsContextType {
   leads: Lead[];
   visibleLeads: Lead[];
-  addLead: (form: AddLeadForm) => { success: boolean; error?: string };
+  loading: boolean;
+  addLead: (form: AddLeadForm) => Promise<{ success: boolean; error?: string }>;
   updateLead: (id: string, updates: Partial<Lead>) => void;
   deleteLead: (id: string) => void;
 }
 
 const LeadsContext = createContext<LeadsContextType | null>(null);
 
-function loadLeads(): Lead[] {
+function loadLocalLeads(): Lead[] {
   try {
     const saved = localStorage.getItem(LEADS_STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
+    return saved ? (JSON.parse(saved) as Lead[]) : [];
   } catch {
     return [];
   }
 }
 
-function saveLeads(leads: Lead[]) {
+function cacheLeads(leads: Lead[]) {
   localStorage.setItem(LEADS_STORAGE_KEY, JSON.stringify(leads));
 }
 
-function mergeWebsiteLeads(existing: Lead[], websiteLeads: Lead[]): Lead[] {
-  const byId = new Map(existing.map((lead) => [lead.id, lead]));
-  let changed = false;
-
-  for (const websiteLead of websiteLeads) {
-    if (!byId.has(websiteLead.id)) {
-      byId.set(websiteLead.id, websiteLead);
-      changed = true;
-    }
-  }
-
-  if (!changed) return existing;
-
-  return Array.from(byId.values()).sort((a, b) => {
-    const aTime = Date.parse((a as Lead & { submittedAt?: string }).submittedAt || a.callDate || '') || 0;
-    const bTime = Date.parse((b as Lead & { submittedAt?: string }).submittedAt || b.callDate || '') || 0;
+function sortLeads(leads: Lead[]): Lead[] {
+  return [...leads].sort((a, b) => {
+    const aTime =
+      Date.parse((a as Lead & { submittedAt?: string }).submittedAt || a.callDate || '') || 0;
+    const bTime =
+      Date.parse((b as Lead & { submittedAt?: string }).submittedAt || b.callDate || '') || 0;
     return bTime - aTime;
   });
+}
+
+async function fetchServerLeads(): Promise<Lead[] | null> {
+  try {
+    const response = await fetch('/api/leads');
+    if (!response.ok) return null;
+    const data = await response.json();
+    return Array.isArray(data.leads) ? (data.leads as Lead[]) : [];
+  } catch {
+    return null;
+  }
+}
+
+async function syncLocalLeadsToServer(localLeads: Lead[]): Promise<Lead[] | null> {
+  if (localLeads.length === 0) {
+    return fetchServerLeads();
+  }
+
+  try {
+    const response = await fetch('/api/leads/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ leads: localLeads }),
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return Array.isArray(data.leads) ? (data.leads as Lead[]) : [];
+  } catch {
+    return null;
+  }
 }
 
 export function LeadsProvider({ children }: { children: ReactNode }) {
   const { user, isTechnician } = useAuth();
   const { getAccountById } = useAccounts();
-  const [leads, setLeads] = useState<Lead[]>(loadLeads);
+  const [leads, setLeads] = useState<Lead[]>(() => sortLeads(loadLocalLeads()));
+  const [loading, setLoading] = useState(true);
   const leadsRef = useRef(leads);
   leadsRef.current = leads;
+  const syncingRef = useRef(false);
 
-  useEffect(() => {
-    saveLeads(leads);
-  }, [leads]);
+  const applyServerLeads = useCallback((serverLeads: Lead[]) => {
+    const sorted = sortLeads(serverLeads);
+    setLeads(sorted);
+    cacheLeads(sorted);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
 
-    async function syncWebsiteLeads() {
-      try {
-        const response = await fetch('/api/leads');
-        if (!response.ok) return;
-        const data = await response.json();
-        const websiteLeads = Array.isArray(data.leads) ? (data.leads as Lead[]) : [];
-        if (cancelled || websiteLeads.length === 0) return;
+    async function bootstrapFromServer() {
+      setLoading(true);
+      const localLeads = loadLocalLeads();
 
-        setLeads((prev) => {
-          const merged = mergeWebsiteLeads(prev, websiteLeads);
-          if (merged === prev) return prev;
-          saveLeads(merged);
-          return merged;
-        });
-      } catch {
-        // CRM API may be offline during local frontend-only runs
+      let serverLeads = await fetchServerLeads();
+      if (cancelled) return;
+
+      if (serverLeads) {
+        const serverIds = new Set(serverLeads.map((lead) => lead.id));
+        const missingLocal = localLeads.filter((lead) => lead.id && !serverIds.has(lead.id));
+
+        if (missingLocal.length > 0) {
+          const merged = await syncLocalLeadsToServer(missingLocal);
+          if (merged) serverLeads = merged;
+        }
+
+        localStorage.setItem(LEADS_MIGRATION_KEY, '1');
+        applyServerLeads(serverLeads);
+      }
+
+      setLoading(false);
+    }
+
+    void bootstrapFromServer();
+    return () => {
+      cancelled = true;
+    };
+  }, [applyServerLeads]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function pollServerLeads() {
+      if (syncingRef.current) return;
+      const serverLeads = await fetchServerLeads();
+      if (cancelled || !serverLeads) return;
+
+      const current = leadsRef.current;
+      const sameLength = current.length === serverLeads.length;
+      const sameIds =
+        sameLength &&
+        current.every((lead) => serverLeads.some((server) => server.id === lead.id)) &&
+        JSON.stringify(current) === JSON.stringify(sortLeads(serverLeads));
+
+      if (!sameIds) {
+        applyServerLeads(serverLeads);
       }
     }
 
-    syncWebsiteLeads();
-    const interval = window.setInterval(syncWebsiteLeads, 10000);
+    const interval = window.setInterval(() => {
+      void pollServerLeads();
+    }, 8000);
+
     return () => {
       cancelled = true;
       window.clearInterval(interval);
     };
-  }, []);
+  }, [applyServerLeads]);
 
   useEffect(() => {
     let cancelled = false;
@@ -124,25 +183,32 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         );
         if (paidByLead.size === 0) return;
 
-        setLeads((prev) => {
-          let changed = false;
-          const updated = prev.map((lead) => {
-            const paid = paidByLead.get(lead.id);
-            if (!paid || lead.invoiceStatus === 'paid') return lead;
-            changed = true;
-            return {
-              ...lead,
-              sentInvoice: true,
-              invoiceStatus: 'paid' as const,
-              invoicePaidAt: paid.paidAt || new Date().toISOString(),
-              zellerReferenceId: paid.referenceId || lead.zellerReferenceId,
-              zellerPaymentUrl: paid.paymentUrl || lead.zellerPaymentUrl,
-            };
+        for (const [leadId, paid] of paidByLead) {
+          const lead = leadsRef.current.find((item) => item.id === leadId);
+          if (!lead || lead.invoiceStatus === 'paid') continue;
+
+          const updates: Partial<Lead> = {
+            sentInvoice: true,
+            invoiceStatus: 'paid',
+            invoicePaidAt: paid.paidAt || new Date().toISOString(),
+            zellerReferenceId: paid.referenceId || lead.zellerReferenceId,
+            zellerPaymentUrl: paid.paymentUrl || lead.zellerPaymentUrl,
+          };
+
+          setLeads((prev) => {
+            const updated = prev.map((item) =>
+              item.id === leadId ? { ...item, ...updates } : item,
+            );
+            cacheLeads(updated);
+            return updated;
           });
-          if (!changed) return prev;
-          saveLeads(updated);
-          return updated;
-        });
+
+          void fetch(`/api/leads/${leadId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updates),
+          }).catch(() => undefined);
+        }
       } catch {
         // ignore offline / missing API during local frontend-only runs
       }
@@ -163,7 +229,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   }, [leads, user, isTechnician]);
 
   const addLead = useCallback(
-    (form: AddLeadForm): { success: boolean; error?: string } => {
+    async (form: AddLeadForm): Promise<{ success: boolean; error?: string }> => {
       const client = form.assignedClientId ? getAccountById(form.assignedClientId) : null;
       if (form.assignedClientId && !client) {
         return { success: false, error: 'Selected client not found.' };
@@ -200,15 +266,33 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         sentToCustomer: false,
         sentToTechnician: false,
         sentInvoice: false,
+        submittedAt: new Date().toISOString(),
       };
 
-      setLeads((prev) => {
-        const updated = [newLead, ...prev];
-        saveLeads(updated);
-        return updated;
-      });
+      try {
+        syncingRef.current = true;
+        const response = await fetch('/api/leads/crm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newLead),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.ok) {
+          return { success: false, error: data.error || 'Failed to save lead to server.' };
+        }
 
-      return { success: true };
+        const saved = (data.lead as Lead) || newLead;
+        setLeads((prev) => {
+          const updated = sortLeads([saved, ...prev.filter((lead) => lead.id !== saved.id)]);
+          cacheLeads(updated);
+          return updated;
+        });
+        return { success: true };
+      } catch {
+        return { success: false, error: 'Unable to reach server. Lead was not saved.' };
+      } finally {
+        syncingRef.current = false;
+      }
     },
     [user, getAccountById],
   );
@@ -216,15 +300,29 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   const updateLead = useCallback((id: string, updates: Partial<Lead>) => {
     setLeads((prev) => {
       const updated = prev.map((l) => (l.id === id ? { ...l, ...updates } : l));
-      saveLeads(updated);
+      cacheLeads(updated);
 
-      const target = updated.find((l) => l.id === id) as (Lead & { webSource?: string }) | undefined;
-      if (target?.webSource) {
+      const target = updated.find((l) => l.id === id);
+      if (target) {
+        syncingRef.current = true;
         void fetch(`/api/leads/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(target),
-        }).catch(() => undefined);
+        })
+          .then(async (response) => {
+            if (response.status === 404) {
+              await fetch('/api/leads/crm', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(target),
+              });
+            }
+          })
+          .catch(() => undefined)
+          .finally(() => {
+            syncingRef.current = false;
+          });
       }
 
       return updated;
@@ -233,20 +331,21 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
   const deleteLead = useCallback((id: string) => {
     setLeads((prev) => {
-      const target = prev.find((l) => l.id === id) as (Lead & { webSource?: string }) | undefined;
       const updated = prev.filter((l) => l.id !== id);
-      saveLeads(updated);
-
-      if (target?.webSource) {
-        void fetch(`/api/leads/${id}`, { method: 'DELETE' }).catch(() => undefined);
-      }
-
+      cacheLeads(updated);
       return updated;
     });
+
+    syncingRef.current = true;
+    void fetch(`/api/leads/${id}`, { method: 'DELETE' })
+      .catch(() => undefined)
+      .finally(() => {
+        syncingRef.current = false;
+      });
   }, []);
 
   return (
-    <LeadsContext.Provider value={{ leads, visibleLeads, addLead, updateLead, deleteLead }}>
+    <LeadsContext.Provider value={{ leads, visibleLeads, loading, addLead, updateLead, deleteLead }}>
       {children}
     </LeadsContext.Provider>
   );
