@@ -101,19 +101,19 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     async function bootstrapFromServer() {
       setLoading(true);
       const localLeads = loadLocalLeads();
+      const alreadyMigrated = localStorage.getItem(LEADS_MIGRATION_KEY) === '1';
 
       let serverLeads = await fetchServerLeads();
       if (cancelled) return;
 
+      // One-time migration only. After that, never re-upload local-only leads
+      // (that was resurrecting deleted records from other browsers).
+      if (!alreadyMigrated && localLeads.length > 0) {
+        const merged = await syncLocalLeadsToServer(localLeads);
+        if (merged) serverLeads = merged;
+      }
+
       if (serverLeads) {
-        const serverIds = new Set(serverLeads.map((lead) => lead.id));
-        const missingLocal = localLeads.filter((lead) => lead.id && !serverIds.has(lead.id));
-
-        if (missingLocal.length > 0) {
-          const merged = await syncLocalLeadsToServer(missingLocal);
-          if (merged) serverLeads = merged;
-        }
-
         localStorage.setItem(LEADS_MIGRATION_KEY, '1');
         applyServerLeads(serverLeads);
       }
@@ -136,20 +136,32 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       if (cancelled || !serverLeads) return;
 
       const current = leadsRef.current;
-      const sameLength = current.length === serverLeads.length;
-      const sameIds =
-        sameLength &&
-        current.every((lead) => serverLeads.some((server) => server.id === lead.id)) &&
-        JSON.stringify(current) === JSON.stringify(sortLeads(serverLeads));
+      const sortedServer = sortLeads(serverLeads);
+      const localIds = current.map((lead) => lead.id).sort().join(',');
+      const serverIds = sortedServer.map((lead) => lead.id).sort().join(',');
 
-      if (!sameIds) {
-        applyServerLeads(serverLeads);
+      if (localIds !== serverIds || current.length !== sortedServer.length) {
+        applyServerLeads(sortedServer);
+        return;
+      }
+
+      const localStamp = current
+        .map((lead) => `${lead.id}:${lead.status}:${lead.outcome}:${lead.invoiceStatus}:${(lead.history || []).length}`)
+        .sort()
+        .join('|');
+      const serverStamp = sortedServer
+        .map((lead) => `${lead.id}:${lead.status}:${lead.outcome}:${lead.invoiceStatus}:${(lead.history || []).length}`)
+        .sort()
+        .join('|');
+
+      if (localStamp !== serverStamp) {
+        applyServerLeads(sortedServer);
       }
     }
 
     const interval = window.setInterval(() => {
       void pollServerLeads();
-    }, 8000);
+    }, 5000);
 
     return () => {
       cancelled = true;
@@ -310,15 +322,6 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(target),
         })
-          .then(async (response) => {
-            if (response.status === 404) {
-              await fetch('/api/leads/crm', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(target),
-              });
-            }
-          })
           .catch(() => undefined)
           .finally(() => {
             syncingRef.current = false;
@@ -330,6 +333,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const deleteLead = useCallback((id: string) => {
+    // Optimistically remove locally so UI updates immediately.
     setLeads((prev) => {
       const updated = prev.filter((l) => l.id !== id);
       cacheLeads(updated);
@@ -338,11 +342,21 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
     syncingRef.current = true;
     void fetch(`/api/leads/${id}`, { method: 'DELETE' })
+      .then(async (response) => {
+        // Always refresh from server so every browser converges on DB truth.
+        const serverLeads = await fetchServerLeads();
+        if (serverLeads) {
+          applyServerLeads(serverLeads);
+        } else if (!response.ok) {
+          // If delete failed and we can't refresh, put nothing back — next poll will fix.
+          console.error('Failed to delete lead on server', id, response.status);
+        }
+      })
       .catch(() => undefined)
       .finally(() => {
         syncingRef.current = false;
       });
-  }, []);
+  }, [applyServerLeads]);
 
   return (
     <LeadsContext.Provider value={{ leads, visibleLeads, loading, addLead, updateLead, deleteLead }}>

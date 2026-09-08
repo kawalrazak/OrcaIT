@@ -266,6 +266,9 @@ app.post('/api/leads/crm', async (req, res) => {
     };
 
     const saved = await withLeadsLock(async () => leadsStore.upsertLead(lead));
+    if (saved?.skipped) {
+      return res.status(410).json({ ok: false, error: 'Lead was deleted and cannot be restored.', deleted: true });
+    }
     return res.status(201).json({ ok: true, lead: saved });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to save CRM lead.';
@@ -321,12 +324,8 @@ app.put('/api/leads/:id', async (req, res) => {
 
 app.delete('/api/leads/:id', async (req, res) => {
   try {
-    const deleted = await withLeadsLock(async () => leadsStore.deleteLead(req.params.id));
-
-    if (!deleted) {
-      return res.status(404).json({ ok: false, error: 'Lead not found.' });
-    }
-    return res.json({ ok: true });
+    await withLeadsLock(async () => leadsStore.deleteLead(req.params.id));
+    return res.json({ ok: true, deleted: true, id: req.params.id });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to delete lead.';
     return res.status(500).json({ ok: false, error: message });

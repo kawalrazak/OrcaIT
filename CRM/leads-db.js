@@ -74,6 +74,10 @@ export function createLeadsStore({ dataDir }) {
           status TEXT,
           updated_at TEXT NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS deleted_leads (
+          id TEXT PRIMARY KEY,
+          deleted_at TEXT NOT NULL
+        );
         CREATE INDEX IF NOT EXISTS idx_leads_submitted ON leads(submitted_at DESC);
         CREATE INDEX IF NOT EXISTS idx_leads_phone ON leads(phone);
       `);
@@ -162,6 +166,11 @@ export function createLeadsStore({ dataDir }) {
   }
 
   async function insertLead(lead) {
+    const deleted = openDb().prepare('SELECT id FROM deleted_leads WHERE id = ?').get(lead.id);
+    if (deleted) {
+      return { skipped: true, reason: 'deleted' };
+    }
+
     const submittedAt = lead.submittedAt || new Date().toISOString();
     const updatedAt = new Date().toISOString();
 
@@ -190,6 +199,11 @@ export function createLeadsStore({ dataDir }) {
       throw new Error('Lead id is required.');
     }
 
+    const deleted = openDb().prepare('SELECT id FROM deleted_leads WHERE id = ?').get(lead.id);
+    if (deleted) {
+      return { skipped: true, reason: 'deleted' };
+    }
+
     const existing = openDb().prepare('SELECT id FROM leads WHERE id = ?').get(lead.id);
     if (existing) {
       return updateLead(lead.id, lead);
@@ -198,6 +212,11 @@ export function createLeadsStore({ dataDir }) {
   }
 
   async function updateLead(id, updates) {
+    const deleted = openDb().prepare('SELECT id FROM deleted_leads WHERE id = ?').get(id);
+    if (deleted) {
+      return null;
+    }
+
     const existing = openDb().prepare('SELECT payload FROM leads WHERE id = ?').get(id);
     if (!existing) return null;
 
@@ -230,10 +249,20 @@ export function createLeadsStore({ dataDir }) {
   }
 
   async function deleteLead(id) {
-    const result = openDb().prepare('DELETE FROM leads WHERE id = ?').run(id);
-    if (result.changes === 0) return false;
+    const deletedAt = new Date().toISOString();
+    openDb()
+      .prepare(
+        `INSERT OR REPLACE INTO deleted_leads (id, deleted_at) VALUES (?, ?)`,
+      )
+      .run(id, deletedAt);
+
+    openDb().prepare('DELETE FROM leads WHERE id = ?').run(id);
     await writeCsvFromDb();
     return true;
+  }
+
+  function isDeleted(id) {
+    return Boolean(openDb().prepare('SELECT id FROM deleted_leads WHERE id = ?').get(id));
   }
 
   return {
@@ -243,6 +272,7 @@ export function createLeadsStore({ dataDir }) {
     upsertLead,
     updateLead,
     deleteLead,
+    isDeleted,
     paths: { dbPath, csvPath, legacyJsonPath },
   };
 }
