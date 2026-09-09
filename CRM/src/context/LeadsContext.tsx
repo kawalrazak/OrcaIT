@@ -22,7 +22,7 @@ interface LeadsContextType {
   loading: boolean;
   addLead: (form: AddLeadForm) => Promise<{ success: boolean; error?: string }>;
   updateLead: (id: string, updates: Partial<Lead>) => void;
-  deleteLead: (id: string) => void;
+  deleteLead: (id: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 const LeadsContext = createContext<LeadsContextType | null>(null);
@@ -332,7 +332,10 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const deleteLead = useCallback((id: string) => {
+  const deleteLead = useCallback(async (id: string): Promise<{ success: boolean; error?: string }> => {
+    const previous = leadsRef.current;
+    const removed = previous.find((lead) => lead.id === id);
+
     // Optimistically remove locally so UI updates immediately.
     setLeads((prev) => {
       const updated = prev.filter((l) => l.id !== id);
@@ -341,21 +344,40 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     });
 
     syncingRef.current = true;
-    void fetch(`/api/leads/${id}`, { method: 'DELETE' })
-      .then(async (response) => {
-        // Always refresh from server so every browser converges on DB truth.
-        const serverLeads = await fetchServerLeads();
-        if (serverLeads) {
-          applyServerLeads(serverLeads);
-        } else if (!response.ok) {
-          // If delete failed and we can't refresh, put nothing back — next poll will fix.
-          console.error('Failed to delete lead on server', id, response.status);
+    try {
+      const response = await fetch(`/api/leads/${id}`, { method: 'DELETE' });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || data.ok === false) {
+        // Restore previous list if server delete failed.
+        applyServerLeads(previous);
+        return {
+          success: false,
+          error: data.error || `Could not delete lead${removed?.name ? ` for ${removed.name}` : ''}.`,
+        };
+      }
+
+      const serverLeads = await fetchServerLeads();
+      if (serverLeads) {
+        applyServerLeads(serverLeads);
+        if (serverLeads.some((lead) => lead.id === id)) {
+          return {
+            success: false,
+            error: `Lead${removed?.name ? ` for ${removed.name}` : ''} was not deleted from the database.`,
+          };
         }
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        syncingRef.current = false;
-      });
+      }
+
+      return { success: true };
+    } catch {
+      applyServerLeads(previous);
+      return {
+        success: false,
+        error: `Unable to delete lead${removed?.name ? ` for ${removed.name}` : ''}. Check the server connection.`,
+      };
+    } finally {
+      syncingRef.current = false;
+    }
   }, [applyServerLeads]);
 
   return (

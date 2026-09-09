@@ -12,6 +12,7 @@ import DateInput from '../components/DateInput';
 import SendMessageModal, { type MessageTarget } from '../components/SendMessageModal';
 import EditLeadModal from '../components/EditLeadModal';
 import ConfirmModal from '../components/ConfirmModal';
+import StatusToast from '../components/StatusToast';
 import { LeadTableCells } from '../components/LeadTableCells';
 import LeadInlineHistory from '../components/LeadInlineHistory';
 import { useLeads } from '../context/LeadsContext';
@@ -381,6 +382,12 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteStatus, setDeleteStatus] = useState<{
+    type: 'success' | 'error';
+    title: string;
+    message: string;
+  } | null>(null);
   const [modalTarget, setModalTarget] = useState<MessageTarget>('customer');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -433,6 +440,36 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
       visitTime: lead.technicianTimeDetail || lead.appointmentDate || '',
       ...defaultQuoteFees(lead),
     });
+  }
+
+  async function handleDeleteLead() {
+    setDeleting(true);
+    try {
+      const result = await deleteLead(lead.id);
+      setDeleteOpen(false);
+      if (result.success) {
+        setDeleteStatus({
+          type: 'success',
+          title: 'Lead deleted',
+          message: `Lead for ${lead.name} was deleted successfully.`,
+        });
+      } else {
+        setDeleteStatus({
+          type: 'error',
+          title: 'Delete failed',
+          message: result.error || `Lead for ${lead.name} could not be deleted.`,
+        });
+      }
+    } catch {
+      setDeleteOpen(false);
+      setDeleteStatus({
+        type: 'error',
+        title: 'Delete failed',
+        message: `Lead for ${lead.name} could not be deleted.`,
+      });
+    } finally {
+      setDeleting(false);
+    }
   }
 
   function openModal(target: MessageTarget) {
@@ -748,12 +785,28 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
       <ConfirmModal
         open={deleteOpen}
         title="Delete lead"
-        message={`Delete lead for "${lead.name}"? This cannot be undone.`}
+        message={
+          <>
+            Delete lead for <strong className="font-bold text-slate-900">{lead.name}</strong>? This cannot
+            be undone.
+          </>
+        }
         confirmLabel="Delete"
         cancelLabel="Cancel"
         tone="danger"
-        onClose={() => setDeleteOpen(false)}
-        onConfirm={() => deleteLead(lead.id)}
+        confirming={deleting}
+        onClose={() => {
+          if (!deleting) setDeleteOpen(false);
+        }}
+        onConfirm={handleDeleteLead}
+      />
+
+      <StatusToast
+        open={Boolean(deleteStatus)}
+        type={deleteStatus?.type ?? 'success'}
+        title={deleteStatus?.title ?? ''}
+        message={deleteStatus?.message ?? ''}
+        onClose={() => setDeleteStatus(null)}
       />
 
       <EditLeadModal
