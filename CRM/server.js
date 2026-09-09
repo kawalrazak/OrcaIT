@@ -8,6 +8,7 @@ import twilio from 'twilio';
 import { createLeadsStore } from './leads-db.js';
 import { createZellerInvoicesStore } from './zeller-invoices-db.js';
 import { createActivityLogger } from './activity-log.js';
+import { createEmailSender } from './email.js';
 import {
   createCheckoutSession,
   parseZellerWebhookEvent,
@@ -22,6 +23,7 @@ const dataDir = path.join(__dirname, 'data');
 const leadsStore = createLeadsStore({ dataDir });
 const zellerInvoicesStore = createZellerInvoicesStore({ dataDir });
 const activityLog = createActivityLogger({ dataDir });
+const emailSender = createEmailSender();
 const isProduction =
   process.env.NODE_ENV === 'production' ||
   (process.env.NODE_ENV !== 'development' && existsSync(path.join(distPath, 'index.html')));
@@ -509,6 +511,38 @@ app.post('/api/send-sms', async (req, res) => {
   }
 });
 
+app.post('/api/send-email', async (req, res) => {
+  const { to, subject, text, html, leadId, leadName, performedByName } = req.body || {};
+
+  try {
+    const result = await emailSender.sendMail({ to, subject, text, html });
+    await activityLog.log({
+      action: 'invoice.email',
+      success: true,
+      leadId: asString(leadId),
+      leadName: asString(leadName),
+      accountName: asString(leadName),
+      performedByName: asString(performedByName) || 'Unknown',
+      source: 'smtp',
+      summary: `${asString(performedByName) || 'Unknown'} emailed invoice to ${asString(to)}`,
+    });
+    return res.json(result);
+  } catch (error) {
+    const errMessage = error instanceof Error ? error.message : 'Unable to send email.';
+    const status = error?.status || 500;
+    await activityLog.log({
+      action: 'invoice.email',
+      success: false,
+      leadId: asString(leadId),
+      leadName: asString(leadName),
+      accountName: asString(leadName),
+      performedByName: asString(performedByName) || 'Unknown',
+      error: errMessage,
+    });
+    return res.status(status).json({ success: false, error: errMessage });
+  }
+});
+
 function invoiceAmountDollars(body = {}) {
   const direct = Number(body.amount);
   if (Number.isFinite(direct) && direct > 0) return direct;
@@ -676,6 +710,9 @@ console.log(`[leads-db] SQLite: ${leadsStore.paths.dbPath}`);
 console.log(`[leads-db] CSV export: ${leadsStore.paths.csvPath}`);
 console.log(`[zeller] invoices: ${zellerInvoicesStore.paths.dbPath}`);
 console.log(`[activity] log: ${activityLog.paths.logPath}`);
+console.log(
+  `[email] from=${emailSender.from} configured=${emailSender.isConfigured()} mock=${emailSender.mockMode}`,
+);
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`CareIT CRM server running on http://0.0.0.0:${port}`);

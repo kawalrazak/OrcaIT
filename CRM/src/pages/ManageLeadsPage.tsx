@@ -32,6 +32,7 @@ import {
   isValidAustralianNumber,
   normalizeAustralianNumber,
   sendSms,
+  sendEmail,
 } from '../utils/sms';
 import { createZellerCheckoutSession } from '../utils/zeller';
 import type { ZellerCheckoutInvoice } from '../utils/zeller';
@@ -447,6 +448,7 @@ function LeadRow({
   const [modalTarget, setModalTarget] = useState<MessageTarget>('customer');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [result, setResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [invoiceAmount, setInvoiceAmount] = useState(String(defaultInvoiceAmount(lead) || ''));
   const [creatingCheckout, setCreatingCheckout] = useState(false);
@@ -464,8 +466,13 @@ function LeadRow({
 
   const customerSent = lead.sentToCustomer === true;
   const technicianSent = lead.sentToTechnician === true;
-  const invoiceSent = lead.sentInvoice === true || lead.invoiceStatus === 'sent' || lead.invoiceStatus === 'paid';
+  const invoiceSmsSent =
+    lead.sentInvoiceSms === true ||
+    (lead.sentInvoice === true && lead.sentInvoiceSms == null && lead.sentInvoiceEmail == null);
+  const invoiceEmailSent = lead.sentInvoiceEmail === true;
+  const invoiceChannelsDone = invoiceSmsSent && invoiceEmailSent;
   const invoicePaid = lead.invoiceStatus === 'paid';
+  const invoiceButtonDisabled = invoicePaid || invoiceChannelsDone;
 
   function handleSaveEdit(form: EditLeadForm) {
     const assigned = form.assignedClientId && canAssign
@@ -545,13 +552,15 @@ function LeadRow({
   function openModal(target: MessageTarget) {
     if (target === 'customer' && customerSent) return;
     if (target === 'technician' && technicianSent) return;
-    if (target === 'invoice' && invoiceSent) return;
+    if (target === 'invoice' && invoiceButtonDisabled) return;
     if (target === 'quote' && customerSent) return;
 
     const phone =
       target === 'technician'
         ? technician?.phone?.trim() || ''
         : lead.phone;
+    const hasValidPhone = Boolean(phone && isValidAustralianNumber(phone));
+    const hasEmail = Boolean(lead.email?.trim());
 
     if (target === 'invoice') {
       setInvoiceAmount(String(defaultInvoiceAmount(lead) || lead.paymentAmount || ''));
@@ -570,9 +579,26 @@ function LeadRow({
             }
           : null,
       );
+
+      if (!hasValidPhone && !hasEmail) {
+        setModalTarget(target);
+        setMessage(defaultMessageForTarget(target));
+        setResult({
+          type: 'error',
+          text: 'Customer needs a valid Australian mobile or an email address to send the invoice.',
+        });
+        setModalOpen(true);
+        return;
+      }
+
+      setModalTarget(target);
+      setMessage(defaultMessageForTarget(target));
+      setResult(null);
+      setModalOpen(true);
+      return;
     }
 
-    if (!phone || !isValidAustralianNumber(phone)) {
+    if (!hasValidPhone) {
       setModalTarget(target);
       setMessage(defaultMessageForTarget(target));
       setResult({
@@ -640,8 +666,23 @@ function LeadRow({
   function closeModal() {
     setModalOpen(false);
     setSending(false);
+    setSendingEmail(false);
     setCreatingCheckout(false);
     setResult(null);
+  }
+
+  function invoiceLeadUpdates(extra: Partial<Lead> = {}): Partial<Lead> {
+    return {
+      sentStatus: 'SENT',
+      sentInvoice: true,
+      invoiceStatus: 'sent',
+      invoiceNumber: checkoutInvoice?.referenceId,
+      zellerReferenceId: checkoutInvoice?.referenceId,
+      zellerSessionId: checkoutInvoice?.sessionId,
+      zellerPaymentUrl: checkoutInvoice?.paymentUrl,
+      paymentAmount: checkoutInvoice?.amountDollars ?? (Number(invoiceAmount) || undefined),
+      ...extra,
+    };
   }
 
   async function handleSend() {
@@ -658,6 +699,10 @@ function LeadRow({
       setResult({ type: 'error', text: 'Create a Zeller payment link before sending.' });
       return;
     }
+    if (modalTarget === 'invoice' && invoiceSmsSent) {
+      setResult({ type: 'error', text: 'Invoice SMS was already sent for this lead.' });
+      return;
+    }
 
     setSending(true);
     setResult(null);
@@ -668,16 +713,7 @@ function LeadRow({
         if (modalTarget === 'technician') {
           updateLead(lead.id, { sentStatus: 'SENT', sentToTechnician: true });
         } else if (modalTarget === 'invoice') {
-          updateLead(lead.id, {
-            sentStatus: 'SENT',
-            sentInvoice: true,
-            invoiceStatus: 'sent',
-            invoiceNumber: checkoutInvoice?.referenceId,
-            zellerReferenceId: checkoutInvoice?.referenceId,
-            zellerSessionId: checkoutInvoice?.sessionId,
-            zellerPaymentUrl: checkoutInvoice?.paymentUrl,
-            paymentAmount: checkoutInvoice?.amountDollars ?? (Number(invoiceAmount) || undefined),
-          });
+          updateLead(lead.id, invoiceLeadUpdates({ sentInvoiceSms: true }));
         } else {
           updateLead(lead.id, { sentStatus: 'SENT', sentToCustomer: true });
         }
@@ -691,7 +727,9 @@ function LeadRow({
                 ? 'Invoice SMS with Zeller pay link sent successfully.'
                 : 'Quote sent to customer successfully.',
         });
-        setTimeout(closeModal, 1500);
+        if (modalTarget !== 'invoice') {
+          setTimeout(closeModal, 1500);
+        }
       } else {
         updateLead(lead.id, { sentStatus: 'PENDING' });
         setResult({ type: 'error', text: response.error ?? 'Failed to send message.' });
@@ -701,6 +739,57 @@ function LeadRow({
       setResult({ type: 'error', text: 'Unable to send message — check the server connection.' });
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleSendEmail() {
+    const email = lead.email?.trim() || '';
+    if (!email) {
+      setResult({ type: 'error', text: 'Customer does not have an email address. Add one in Edit Lead.' });
+      return;
+    }
+    if (!message.trim()) {
+      setResult({ type: 'error', text: 'Message cannot be empty.' });
+      return;
+    }
+    if (!checkoutInvoice?.paymentUrl) {
+      setResult({ type: 'error', text: 'Create a Zeller payment link before sending.' });
+      return;
+    }
+    if (invoiceEmailSent) {
+      setResult({ type: 'error', text: 'Invoice email was already sent for this lead.' });
+      return;
+    }
+
+    setSendingEmail(true);
+    setResult(null);
+
+    try {
+      const amount = checkoutInvoice.amountDollars || Number(invoiceAmount) || 0;
+      const response = await sendEmail({
+        to: email,
+        subject: `Orca IT Invoice — $${amount.toFixed(2)} AUD`,
+        text: message.trim(),
+        leadId: lead.id,
+        leadName: lead.name,
+        performedByName: user?.name || user?.username || 'Admin',
+      });
+
+      if (response.ok) {
+        updateLead(lead.id, invoiceLeadUpdates({ sentInvoiceEmail: true }));
+        setResult({
+          type: 'success',
+          text: response.mock
+            ? `Invoice email simulated (SMTP mock) to ${email}.`
+            : `Invoice email sent successfully to ${email} from info@orcait.com.au.`,
+        });
+      } else {
+        setResult({ type: 'error', text: response.error ?? 'Failed to send invoice email.' });
+      }
+    } catch {
+      setResult({ type: 'error', text: 'Unable to send email — check the server SMTP settings.' });
+    } finally {
+      setSendingEmail(false);
     }
   }
 
@@ -747,14 +836,20 @@ function LeadRow({
                 <button
                   type="button"
                   onClick={() => openModal('invoice')}
-                  disabled={invoiceSent}
+                  disabled={invoiceButtonDisabled}
                   className={`w-full rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${
-                    invoiceSent
+                    invoiceButtonDisabled
                       ? 'cursor-not-allowed bg-slate-300 text-slate-500'
                       : 'bg-slate-600 text-white hover:bg-slate-700'
                   }`}
                 >
-                  {invoicePaid ? 'Invoice Paid' : invoiceSent ? 'Invoice Sent' : 'Send Invoice'}
+                  {invoicePaid
+                    ? 'Invoice Paid'
+                    : invoiceChannelsDone
+                      ? 'Invoice Sent'
+                      : invoiceSmsSent || invoiceEmailSent
+                        ? 'Send Invoice…'
+                        : 'Send Invoice'}
                 </button>
                 <button
                   type="button"
@@ -817,12 +912,23 @@ function LeadRow({
                       className={`text-[8px] font-semibold ${
                         invoicePaid
                           ? 'text-emerald-700'
-                          : invoiceSent
+                          : invoiceChannelsDone
                             ? 'text-emerald-600'
-                            : 'text-amber-600'
+                            : invoiceSmsSent || invoiceEmailSent
+                              ? 'text-sky-600'
+                              : 'text-amber-600'
                       }`}
                     >
-                      Inv: {invoicePaid ? 'Paid' : invoiceSent ? 'Sent' : 'Not Sent'}
+                      Inv:{' '}
+                      {invoicePaid
+                        ? 'Paid'
+                        : invoiceChannelsDone
+                          ? 'Sent'
+                          : invoiceSmsSent
+                            ? 'SMS'
+                            : invoiceEmailSent
+                              ? 'Email'
+                              : 'Not Sent'}
                     </p>
                     <p
                       className={`text-[8px] font-semibold ${
@@ -888,10 +994,12 @@ function LeadRow({
         recipientPhone={recipient.phone}
         message={message}
         sending={sending}
+        sendingEmail={sendingEmail}
         result={result}
         onClose={closeModal}
         onMessageChange={setMessage}
         onSend={handleSend}
+        onSendEmail={handleSendEmail}
         invoiceAmount={invoiceAmount}
         onInvoiceAmountChange={(value) => {
           setInvoiceAmount(value);
@@ -901,6 +1009,8 @@ function LeadRow({
         invoiceReferenceId={checkoutInvoice?.referenceId}
         creatingCheckout={creatingCheckout}
         onCreateCheckout={handleCreateCheckout}
+        invoiceSmsSent={invoiceSmsSent}
+        invoiceEmailSent={invoiceEmailSent}
       />
     </>
   );

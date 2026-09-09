@@ -19,7 +19,7 @@ RUN addgroup --system --gid 1001 nodejs \
 
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
-COPY server.js leads-db.js zeller.js zeller-invoices-db.js activity-log.js ./
+COPY server.js leads-db.js zeller.js zeller-invoices-db.js activity-log.js email.js ./
 COPY --from=build /app/dist ./dist
 
 # Persist website leads received from OrcaITWeb

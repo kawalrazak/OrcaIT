@@ -172,3 +172,25 @@ export async function sendSms(to: string, message: string) {
   const body = await res.json();
   return { ok: res.ok && body.success, error: body.error as string | undefined };
 }
+
+export async function sendEmail(options: {
+  to: string;
+  subject: string;
+  text: string;
+  leadId?: string;
+  leadName?: string;
+  performedByName?: string;
+}) {
+  const res = await fetch('/api/send-email', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(options),
+  });
+  const body = await res.json();
+  return {
+    ok: res.ok && body.success !== false,
+    error: body.error as string | undefined,
+    mock: Boolean(body.mock),
+  };
+}
+

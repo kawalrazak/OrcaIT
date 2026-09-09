@@ -83,6 +83,10 @@ export interface Lead {
   sentToCustomer?: boolean;
   sentToTechnician?: boolean;
   sentInvoice?: boolean;
+  /** Invoice payment link sent by SMS */
+  sentInvoiceSms?: boolean;
+  /** Invoice payment link sent by email */
+  sentInvoiceEmail?: boolean;
   technicianTimeDetail?: string;
   calloutFee?: number;
   troubleshootingFee?: number;

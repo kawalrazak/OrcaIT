@@ -6,6 +6,7 @@ const ACTION_LABELS = {
   'lead.create.crm': 'Created lead (CRM)',
   'lead.update': 'Updated lead',
   'lead.delete': 'Deleted lead',
+  'invoice.email': 'Sent invoice email',
 };
 
 function buildSummary(record) {
