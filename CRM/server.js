@@ -72,6 +72,42 @@ function asString(value, fallback = '') {
   return typeof value === 'string' ? value.trim() : fallback;
 }
 
+const ACTIVITY_META_KEYS = new Set([
+  'performedBy',
+  'performedById',
+  'performedByName',
+  'performedByUsername',
+  'deletedBy',
+  'leadName',
+  'activityAction',
+  'activitySummary',
+]);
+
+function stripActivityMeta(body = {}) {
+  const clean = { ...body };
+  for (const key of ACTIVITY_META_KEYS) {
+    delete clean[key];
+  }
+  return clean;
+}
+
+function actorFromRequest(body = {}) {
+  const performedByName =
+    asString(body.performedByName) ||
+    asString(body.deletedBy) ||
+    asString(body.performedBy) ||
+    asString(body.leadUser);
+  const performedByUsername = asString(body.performedByUsername);
+  const performedById = asString(body.performedById);
+
+  return {
+    performedById,
+    performedByName,
+    performedByUsername,
+    deletedBy: performedByName || 'Unknown',
+  };
+}
+
 function buildLeadFromWebsite(body = {}) {
   const source = asString(body.source || body.webSource, 'website');
   const now = new Date();
@@ -256,7 +292,11 @@ app.post('/api/leads', async (req, res) => {
       success: true,
       leadId: lead.id,
       leadName: lead.name,
+      accountName: lead.name,
+      accountId: lead.id,
       source: lead.webSource || 'website',
+      performedByName: 'Website',
+      performedByUsername: 'website',
     });
 
     return res.status(201).json({ ok: true, lead });
@@ -270,6 +310,7 @@ app.post('/api/leads', async (req, res) => {
 app.post('/api/leads/crm', async (req, res) => {
   try {
     const body = req.body || {};
+    const actor = actorFromRequest(body);
     const id = asString(body.id);
     const name = asString(body.name);
     const phone = asString(body.phone);
@@ -279,7 +320,7 @@ app.post('/api/leads/crm', async (req, res) => {
     }
 
     const lead = {
-      ...body,
+      ...stripActivityMeta(body),
       id,
       name,
       phone,
@@ -293,7 +334,10 @@ app.post('/api/leads/crm', async (req, res) => {
         success: false,
         leadId: id,
         leadName: name,
+        accountName: name,
+        accountId: id,
         error: 'Lead was deleted and cannot be restored.',
+        ...actor,
       });
       return res.status(410).json({ ok: false, error: 'Lead was deleted and cannot be restored.', deleted: true });
     }
@@ -303,7 +347,13 @@ app.post('/api/leads/crm', async (req, res) => {
       success: true,
       leadId: saved.id,
       leadName: saved.name,
-      leadUser: saved.leadUser || '',
+      accountName: saved.name,
+      accountId: saved.id,
+      leadUser: saved.leadUser || actor.performedByName || '',
+      status: saved.status,
+      outcome: saved.outcome,
+      ...actor,
+      performedByName: actor.performedByName || saved.leadUser || 'Unknown',
     });
 
     return res.status(201).json({ ok: true, lead: saved });
@@ -323,7 +373,7 @@ app.post('/api/leads/sync', async (req, res) => {
         const phone = asString(item?.phone);
         if (!id || !name || !phone) continue;
         await leadsStore.upsertLead({
-          ...item,
+          ...stripActivityMeta(item),
           id,
           name,
           phone,
@@ -343,8 +393,9 @@ app.post('/api/leads/sync', async (req, res) => {
 app.put('/api/leads/:id', async (req, res) => {
   try {
     const updates = req.body || {};
+    const actor = actorFromRequest(updates);
     const lead = await withLeadsLock(async () => {
-      const { id: _id, ...safeUpdates } = updates;
+      const { id: _id, ...safeUpdates } = stripActivityMeta(updates);
       return leadsStore.updateLead(req.params.id, safeUpdates);
     });
 
@@ -353,7 +404,9 @@ app.put('/api/leads/:id', async (req, res) => {
         action: 'lead.update',
         success: false,
         leadId: req.params.id,
+        accountId: req.params.id,
         error: 'Lead not found.',
+        ...actor,
       });
       return res.status(404).json({ ok: false, error: 'Lead not found.' });
     }
@@ -363,8 +416,12 @@ app.put('/api/leads/:id', async (req, res) => {
       success: true,
       leadId: lead.id,
       leadName: lead.name,
+      accountName: lead.name,
+      accountId: lead.id,
       status: lead.status,
       outcome: lead.outcome,
+      ...actor,
+      performedByName: actor.performedByName || lead.leadUser || 'Unknown',
     });
 
     return res.json({ ok: true, lead });
@@ -374,7 +431,9 @@ app.put('/api/leads/:id', async (req, res) => {
       action: 'lead.update',
       success: false,
       leadId: req.params.id,
+      accountId: req.params.id,
       error: message,
+      ...actorFromRequest(req.body || {}),
     });
     return res.status(500).json({ ok: false, error: message });
   }
@@ -383,8 +442,8 @@ app.put('/api/leads/:id', async (req, res) => {
 app.delete('/api/leads/:id', async (req, res) => {
   try {
     const body = req.body || {};
-    const leadName = asString(body.leadName);
-    const deletedBy = asString(body.deletedBy) || 'Unknown';
+    const actor = actorFromRequest(body);
+    const leadName = asString(body.leadName) || asString(body.accountName);
 
     await withLeadsLock(async () => leadsStore.deleteLead(req.params.id));
 
@@ -393,7 +452,9 @@ app.delete('/api/leads/:id', async (req, res) => {
       success: true,
       leadId: req.params.id,
       leadName,
-      deletedBy,
+      accountName: leadName,
+      accountId: req.params.id,
+      ...actor,
     });
 
     return res.json({ ok: true, deleted: true, id: req.params.id });
@@ -403,7 +464,9 @@ app.delete('/api/leads/:id', async (req, res) => {
       action: 'lead.delete',
       success: false,
       leadId: req.params.id,
+      accountId: req.params.id,
       error: message,
+      ...actorFromRequest(req.body || {}),
     });
     return res.status(500).json({ ok: false, error: message });
   }

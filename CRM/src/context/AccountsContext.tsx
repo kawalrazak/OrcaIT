@@ -30,13 +30,20 @@ const AccountsContext = createContext<AccountsContextType | null>(null);
 
 function normalizeAccount(raw: Account & { role?: string }): Account {
   const role = migrateRole(raw.role ?? 'technician');
+  const permissions = normalizePermissions({
+    ...PERMISSIONS_BY_ROLE[role],
+    ...(raw.permissions ?? {}),
+  });
+
+  // Admins always retain audit-log access even if an older saved permission blob omitted it.
+  if (isAdministrator(role)) {
+    permissions.viewActivityLog = true;
+  }
+
   return {
     ...raw,
     role,
-    permissions: normalizePermissions({
-      ...PERMISSIONS_BY_ROLE[role],
-      ...(raw.permissions ?? {}),
-    }),
+    permissions,
   };
 }
 

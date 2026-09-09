@@ -7,6 +7,7 @@ import {
   isStaffRole,
   migrateRole,
   normalizePermissions,
+  PERMISSIONS_BY_ROLE,
 } from '../utils/permissions';
 
 interface AuthContextType {
@@ -40,6 +41,21 @@ function formatLastLogin(): string {
   });
 }
 
+function permissionsForRole(
+  role: User['role'],
+  permissions: User['permissions'] | undefined,
+): User['permissions'] {
+  // Merge role defaults first so newly added flags (e.g. viewActivityLog) appear for admins.
+  const merged = normalizePermissions({
+    ...PERMISSIONS_BY_ROLE[role],
+    ...(permissions ?? {}),
+  });
+  if (isAdministrator(role)) {
+    merged.viewActivityLog = true;
+  }
+  return merged;
+}
+
 function loadUser(): User | null {
   try {
     const saved = localStorage.getItem(USER_STORAGE_KEY) ?? sessionStorage.getItem(USER_STORAGE_KEY);
@@ -49,7 +65,7 @@ function loadUser(): User | null {
     return {
       ...raw,
       role,
-      permissions: normalizePermissions(raw.permissions),
+      permissions: permissionsForRole(role, raw.permissions),
     };
   } catch {
     return null;
@@ -82,7 +98,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: account.email,
         phone: account.phone,
         role: account.role,
-        permissions: normalizePermissions(account.permissions),
+        permissions: permissionsForRole(account.role, account.permissions),
       };
 
       const changed =
@@ -111,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         email: account.email,
         phone: account.phone,
         role: account.role,
-        permissions: normalizePermissions(account.permissions),
+        permissions: permissionsForRole(account.role, account.permissions),
         lastLogin: formatLastLogin(),
       };
 

@@ -151,6 +151,10 @@ export function canAccessRoute(
   permissions: Permissions | undefined,
 ): boolean {
   if (isAdministrator(role)) return true;
+  // Log is an admin-style audit screen: allow manageUsers as well.
+  if (path === '/activity-log') {
+    return Boolean(permissions?.viewActivityLog || permissions?.manageUsers);
+  }
   const key = NAV_PERMISSIONS[path];
   if (!key) return true;
   return permissions?.[key] ?? false;

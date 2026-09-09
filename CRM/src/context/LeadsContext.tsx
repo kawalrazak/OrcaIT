@@ -30,6 +30,14 @@ interface LeadsContextType {
 
 const LeadsContext = createContext<LeadsContextType | null>(null);
 
+function activityActor(user: { id?: string; name?: string; username?: string } | null | undefined) {
+  return {
+    performedById: user?.id || '',
+    performedByName: user?.name || user?.username || 'Unknown',
+    performedByUsername: user?.username || '',
+  };
+}
+
 function loadLocalLeads(): Lead[] {
   try {
     const saved = localStorage.getItem(LEADS_STORAGE_KEY);
@@ -289,7 +297,10 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         const response = await fetch('/api/leads/crm', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newLead),
+          body: JSON.stringify({
+            ...newLead,
+            ...activityActor(user),
+          }),
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok || !data.ok) {
@@ -323,7 +334,10 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         void fetch(`/api/leads/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(target),
+          body: JSON.stringify({
+            ...target,
+            ...activityActor(user),
+          }),
         })
           .catch(() => undefined)
           .finally(() => {
@@ -333,7 +347,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
       return updated;
     });
-  }, []);
+  }, [user]);
 
   const deleteLead = useCallback(async (
     id: string,
@@ -342,6 +356,8 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     const previous = leadsRef.current;
     const removed = previous.find((lead) => lead.id === id);
     const leadName = meta?.leadName || removed?.name || '';
+    const actor = activityActor(user);
+    const deletedBy = meta?.deletedBy || actor.performedByName;
 
     // Optimistically remove locally so UI updates immediately.
     setLeads((prev) => {
@@ -357,7 +373,10 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           leadName,
-          deletedBy: meta?.deletedBy || 'Unknown',
+          accountName: leadName,
+          deletedBy,
+          ...actor,
+          performedByName: deletedBy,
         }),
       });
       const data = await response.json().catch(() => ({}));
@@ -391,7 +410,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     } finally {
       syncingRef.current = false;
     }
-  }, [applyServerLeads]);
+  }, [applyServerLeads, user]);
 
   return (
     <LeadsContext.Provider value={{ leads, visibleLeads, loading, addLead, updateLead, deleteLead }}>

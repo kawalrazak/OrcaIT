@@ -32,10 +32,11 @@ interface SidebarProps {
 
 export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
-  const { logout, user } = useAuth();
-  const navItems = allNav.filter((item) =>
-    canAccessRoute(item.path, user?.role, user?.permissions),
-  );
+  const { logout, user, isAdministrator } = useAuth();
+  const navItems = allNav.filter((item) => {
+    if (item.path === '/activity-log' && isAdministrator) return true;
+    return canAccessRoute(item.path, user?.role, user?.permissions);
+  });
 
   return (
     <aside
@@ -61,7 +62,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </button>
       </div>
 
-      <nav className="flex-1 space-y-0.5 px-1 py-3">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-1 py-3">
         {navItems.map(({ path, label, icon: Icon }) => {
           const active = location.pathname === path;
           return (
