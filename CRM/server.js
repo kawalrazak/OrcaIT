@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto';
 import twilio from 'twilio';
 import { createLeadsStore } from './leads-db.js';
 import { createZellerInvoicesStore } from './zeller-invoices-db.js';
+import { createActivityLogger } from './activity-log.js';
 import {
   createCheckoutSession,
   parseZellerWebhookEvent,
@@ -20,6 +21,7 @@ const distPath = path.join(__dirname, 'dist');
 const dataDir = path.join(__dirname, 'data');
 const leadsStore = createLeadsStore({ dataDir });
 const zellerInvoicesStore = createZellerInvoicesStore({ dataDir });
+const activityLog = createActivityLogger({ dataDir });
 const isProduction =
   process.env.NODE_ENV === 'production' ||
   (process.env.NODE_ENV !== 'development' && existsSync(path.join(distPath, 'index.html')));
@@ -238,6 +240,14 @@ app.post('/api/leads', async (req, res) => {
       await leadsStore.insertLead(lead);
     });
 
+    await activityLog.log({
+      action: 'lead.create.website',
+      success: true,
+      leadId: lead.id,
+      leadName: lead.name,
+      source: lead.webSource || 'website',
+    });
+
     return res.status(201).json({ ok: true, lead });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to save lead.';
@@ -267,8 +277,24 @@ app.post('/api/leads/crm', async (req, res) => {
 
     const saved = await withLeadsLock(async () => leadsStore.upsertLead(lead));
     if (saved?.skipped) {
+      await activityLog.log({
+        action: 'lead.create.crm',
+        success: false,
+        leadId: id,
+        leadName: name,
+        error: 'Lead was deleted and cannot be restored.',
+      });
       return res.status(410).json({ ok: false, error: 'Lead was deleted and cannot be restored.', deleted: true });
     }
+
+    await activityLog.log({
+      action: 'lead.create.crm',
+      success: true,
+      leadId: saved.id,
+      leadName: saved.name,
+      leadUser: saved.leadUser || '',
+    });
+
     return res.status(201).json({ ok: true, lead: saved });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to save CRM lead.';
@@ -312,22 +338,62 @@ app.put('/api/leads/:id', async (req, res) => {
     });
 
     if (!lead) {
+      await activityLog.log({
+        action: 'lead.update',
+        success: false,
+        leadId: req.params.id,
+        error: 'Lead not found.',
+      });
       return res.status(404).json({ ok: false, error: 'Lead not found.' });
     }
+
+    await activityLog.log({
+      action: 'lead.update',
+      success: true,
+      leadId: lead.id,
+      leadName: lead.name,
+      status: lead.status,
+      outcome: lead.outcome,
+    });
 
     return res.json({ ok: true, lead });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to update lead.';
+    await activityLog.log({
+      action: 'lead.update',
+      success: false,
+      leadId: req.params.id,
+      error: message,
+    });
     return res.status(500).json({ ok: false, error: message });
   }
 });
 
 app.delete('/api/leads/:id', async (req, res) => {
   try {
+    const body = req.body || {};
+    const leadName = asString(body.leadName);
+    const deletedBy = asString(body.deletedBy) || 'Unknown';
+
     await withLeadsLock(async () => leadsStore.deleteLead(req.params.id));
+
+    await activityLog.log({
+      action: 'lead.delete',
+      success: true,
+      leadId: req.params.id,
+      leadName,
+      deletedBy,
+    });
+
     return res.json({ ok: true, deleted: true, id: req.params.id });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to delete lead.';
+    await activityLog.log({
+      action: 'lead.delete',
+      success: false,
+      leadId: req.params.id,
+      error: message,
+    });
     return res.status(500).json({ ok: false, error: message });
   }
 });
@@ -535,6 +601,7 @@ await zellerInvoicesStore.init();
 console.log(`[leads-db] SQLite: ${leadsStore.paths.dbPath}`);
 console.log(`[leads-db] CSV export: ${leadsStore.paths.csvPath}`);
 console.log(`[zeller] invoices: ${zellerInvoicesStore.paths.dbPath}`);
+console.log(`[activity] log: ${activityLog.paths.logPath}`);
 
 app.listen(port, '0.0.0.0', () => {
   console.log(`CareIT CRM server running on http://0.0.0.0:${port}`);

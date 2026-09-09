@@ -22,7 +22,10 @@ interface LeadsContextType {
   loading: boolean;
   addLead: (form: AddLeadForm) => Promise<{ success: boolean; error?: string }>;
   updateLead: (id: string, updates: Partial<Lead>) => void;
-  deleteLead: (id: string) => Promise<{ success: boolean; error?: string }>;
+  deleteLead: (
+    id: string,
+    meta?: { leadName?: string; deletedBy?: string },
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 const LeadsContext = createContext<LeadsContextType | null>(null);
@@ -332,9 +335,13 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  const deleteLead = useCallback(async (id: string): Promise<{ success: boolean; error?: string }> => {
+  const deleteLead = useCallback(async (
+    id: string,
+    meta?: { leadName?: string; deletedBy?: string },
+  ): Promise<{ success: boolean; error?: string }> => {
     const previous = leadsRef.current;
     const removed = previous.find((lead) => lead.id === id);
+    const leadName = meta?.leadName || removed?.name || '';
 
     // Optimistically remove locally so UI updates immediately.
     setLeads((prev) => {
@@ -345,15 +352,21 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
     syncingRef.current = true;
     try {
-      const response = await fetch(`/api/leads/${id}`, { method: 'DELETE' });
+      const response = await fetch(`/api/leads/${id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadName,
+          deletedBy: meta?.deletedBy || 'Unknown',
+        }),
+      });
       const data = await response.json().catch(() => ({}));
 
       if (!response.ok || data.ok === false) {
-        // Restore previous list if server delete failed.
         applyServerLeads(previous);
         return {
           success: false,
-          error: data.error || `Could not delete lead${removed?.name ? ` for ${removed.name}` : ''}.`,
+          error: data.error || `Could not delete lead${leadName ? ` for ${leadName}` : ''}.`,
         };
       }
 
@@ -363,7 +376,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
         if (serverLeads.some((lead) => lead.id === id)) {
           return {
             success: false,
-            error: `Lead${removed?.name ? ` for ${removed.name}` : ''} was not deleted from the database.`,
+            error: `Lead${leadName ? ` for ${leadName}` : ''} was not deleted from the database.`,
           };
         }
       }
@@ -373,7 +386,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
       applyServerLeads(previous);
       return {
         success: false,
-        error: `Unable to delete lead${removed?.name ? ` for ${removed.name}` : ''}. Check the server connection.`,
+        error: `Unable to delete lead${leadName ? ` for ${leadName}` : ''}. Check the server connection.`,
       };
     } finally {
       syncingRef.current = false;

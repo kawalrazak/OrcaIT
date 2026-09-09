@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import {
   Search,
   RotateCcw,
@@ -62,6 +62,25 @@ export default function ManageLeadsPage() {
   const [alphaFilter, setAlphaFilter] = useState('');
   const [sortField, setSortField] = useState<'name' | 'date'>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [statusToast, setStatusToast] = useState<{
+    type: 'success' | 'error' | 'info';
+    title: string;
+    message: string;
+    autoCloseMs?: number;
+  } | null>(null);
+
+  const dismissStatusToast = useCallback(() => setStatusToast(null), []);
+
+  const showStatusToast = useCallback((
+    toast: {
+      type: 'success' | 'error' | 'info';
+      title: string;
+      message: string;
+      autoCloseMs?: number;
+    },
+  ) => {
+    setStatusToast({ ...toast, autoCloseMs: toast.autoCloseMs ?? 5000 });
+  }, []);
 
   const filtered = useMemo(() => {
     let result = [...leads];
@@ -330,7 +349,12 @@ export default function ManageLeadsPage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {paginated.map((lead, idx) => (
-                <LeadRow key={lead.id} lead={lead} index={(currentPage - 1) * perPage + idx + 1} />
+                <LeadRow
+                  key={lead.id}
+                  lead={lead}
+                  index={(currentPage - 1) * perPage + idx + 1}
+                  onStatusToast={showStatusToast}
+                />
               ))}
               {paginated.length === 0 && (
                 <tr>
@@ -367,11 +391,34 @@ export default function ManageLeadsPage() {
           </div>
         )}
       </div>
+
+      <StatusToast
+        key={`${statusToast?.type}-${statusToast?.title}-${statusToast?.message}`}
+        open={Boolean(statusToast)}
+        type={statusToast?.type ?? 'info'}
+        title={statusToast?.title ?? ''}
+        message={statusToast?.message ?? ''}
+        autoCloseMs={statusToast?.autoCloseMs ?? 5000}
+        onClose={dismissStatusToast}
+      />
     </div>
   );
 }
 
-function LeadRow({ lead, index }: { lead: Lead; index: number }) {
+function LeadRow({
+  lead,
+  index,
+  onStatusToast,
+}: {
+  lead: Lead;
+  index: number;
+  onStatusToast: (toast: {
+    type: 'success' | 'error' | 'info';
+    title: string;
+    message: string;
+    autoCloseMs?: number;
+  }) => void;
+}) {
   const { getAccountById, technicianAccounts } = useAccounts();
   const { updateLead, deleteLead } = useLeads();
   const { user } = useAuth();
@@ -383,11 +430,6 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [deleteStatus, setDeleteStatus] = useState<{
-    type: 'success' | 'error';
-    title: string;
-    message: string;
-  } | null>(null);
   const [modalTarget, setModalTarget] = useState<MessageTarget>('customer');
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -443,29 +485,43 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
   }
 
   async function handleDeleteLead() {
+    const leadName = lead.name;
     setDeleting(true);
+    onStatusToast({
+      type: 'info',
+      title: 'Deleting lead',
+      message: `Deleting lead for ${leadName}...`,
+      autoCloseMs: 0,
+    });
+
     try {
-      const result = await deleteLead(lead.id);
+      const result = await deleteLead(lead.id, {
+        leadName,
+        deletedBy: user?.name || user?.username || 'Admin',
+      });
       setDeleteOpen(false);
       if (result.success) {
-        setDeleteStatus({
+        onStatusToast({
           type: 'success',
           title: 'Lead deleted',
-          message: `Lead for ${lead.name} was deleted successfully.`,
+          message: `Lead for ${leadName} was deleted successfully.`,
+          autoCloseMs: 5000,
         });
       } else {
-        setDeleteStatus({
+        onStatusToast({
           type: 'error',
           title: 'Delete failed',
-          message: result.error || `Lead for ${lead.name} could not be deleted.`,
+          message: result.error || `Lead for ${leadName} could not be deleted.`,
+          autoCloseMs: 5000,
         });
       }
     } catch {
       setDeleteOpen(false);
-      setDeleteStatus({
+      onStatusToast({
         type: 'error',
         title: 'Delete failed',
-        message: `Lead for ${lead.name} could not be deleted.`,
+        message: `Lead for ${leadName} could not be deleted.`,
+        autoCloseMs: 5000,
       });
     } finally {
       setDeleting(false);
@@ -799,14 +855,6 @@ function LeadRow({ lead, index }: { lead: Lead; index: number }) {
           if (!deleting) setDeleteOpen(false);
         }}
         onConfirm={handleDeleteLead}
-      />
-
-      <StatusToast
-        open={Boolean(deleteStatus)}
-        type={deleteStatus?.type ?? 'success'}
-        title={deleteStatus?.title ?? ''}
-        message={deleteStatus?.message ?? ''}
-        onClose={() => setDeleteStatus(null)}
       />
 
       <EditLeadModal
