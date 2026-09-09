@@ -106,11 +106,11 @@ export default function ActivityLogPage() {
 
   return (
     <div>
-      <Breadcrumbs items={[{ label: 'Log' }]} />
+      <Breadcrumbs items={[{ label: 'Activity Logs' }]} />
 
       <div className="mt-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-orca-royal-dark">Activity Log</h1>
+          <h1 className="text-xl font-bold text-orca-royal-dark">Activity Logs</h1>
           <p className="mt-1 text-sm text-slate-500">
             Detailed record of actions: what was done, on which account, by whom, and when
           </p>

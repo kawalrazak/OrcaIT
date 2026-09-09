@@ -22,7 +22,7 @@ const allNav = [
   { path: '/online-appointments', label: 'Online Appointments', icon: Monitor },
   { path: '/onsite-appointments', label: 'Onsite Appointments', icon: CalendarCheck },
   { path: '/manage-clients', label: 'Manage Users', icon: Users },
-  { path: '/activity-log', label: 'Log', icon: ScrollText },
+  { path: '/activity-log', label: 'Activity Logs', icon: ScrollText },
 ];
 
 interface SidebarProps {
