@@ -1,4 +1,4 @@
-import { appendFile, mkdir } from 'fs/promises';
+import { appendFile, mkdir, readFile } from 'fs/promises';
 import path from 'path';
 
 export function createActivityLogger({ dataDir }) {
@@ -30,8 +30,34 @@ export function createActivityLogger({ dataDir }) {
     return record;
   }
 
+  async function read({ limit = 200 } = {}) {
+    const max = Math.min(Math.max(Number(limit) || 200, 1), 1000);
+    try {
+      const raw = await readFile(logPath, 'utf8');
+      const entries = raw
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          try {
+            return JSON.parse(line);
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean)
+        .reverse()
+        .slice(0, max);
+      return entries;
+    } catch (error) {
+      if (error && error.code === 'ENOENT') return [];
+      throw error;
+    }
+  }
+
   return {
     log,
+    read,
     paths: { logPath },
   };
 }

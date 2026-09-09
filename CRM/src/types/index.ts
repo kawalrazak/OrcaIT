@@ -12,6 +12,7 @@ export interface Permissions {
   viewOnsiteAppointments: boolean;
   viewOnlineAppointments: boolean;
   viewMyTasks: boolean;
+  viewActivityLog: boolean;
   editLeads: boolean;
   deleteLeads: boolean;
   assignTechnicians: boolean;

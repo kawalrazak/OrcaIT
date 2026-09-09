@@ -14,6 +14,7 @@ import OnlineAppointmentsPage from './pages/OnlineAppointmentsPage';
 import ManageClientsPage from './pages/ManageClientsPage';
 import MyTasksPage from './pages/MyTasksPage';
 import SettingsPage from './pages/SettingsPage';
+import ActivityLogPage from './pages/ActivityLogPage';
 import { hasPermission } from './utils/permissions';
 import type { ReactNode } from 'react';
 
@@ -59,6 +60,7 @@ export default function App() {
                 <Route path="/online-appointments" element={<PermissionRoute path="/online-appointments"><OnlineAppointmentsPage /></PermissionRoute>} />
                 <Route path="/onsite-appointments" element={<PermissionRoute path="/onsite-appointments"><OnsiteAppointmentsPage /></PermissionRoute>} />
                 <Route path="/manage-clients" element={<ManageUsersRoute><ManageClientsPage /></ManageUsersRoute>} />
+                <Route path="/activity-log" element={<PermissionRoute path="/activity-log"><ActivityLogPage /></PermissionRoute>} />
                 <Route path="/settings" element={<SettingsPage />} />
               </Route>
               <Route path="*" element={<Navigate to="/login" replace />} />

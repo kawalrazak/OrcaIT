@@ -210,6 +210,17 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
+app.get('/api/activity', async (req, res) => {
+  try {
+    const limit = Number(req.query.limit) || 200;
+    const entries = await activityLog.read({ limit });
+    res.json({ ok: true, entries });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to load activity log.';
+    res.status(500).json({ ok: false, error: message });
+  }
+});
+
 app.get('/api/leads', async (_req, res) => {
   try {
     const leads = leadsStore.getAllLeads();
