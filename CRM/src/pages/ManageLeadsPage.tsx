@@ -57,6 +57,7 @@ export default function ManageLeadsPage() {
   const { clientAccounts } = useAccounts();
   const [filters, setFilters] = useState<LeadFilters>(emptyFilters);
   const [appliedFilters, setAppliedFilters] = useState<LeadFilters>(emptyFilters);
+  const [searchMinimized, setSearchMinimized] = useState(true);
   const [perPage, setPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [alphaFilter, setAlphaFilter] = useState('');
@@ -168,124 +169,137 @@ export default function ManageLeadsPage() {
 
       {/* Search Panel */}
       <div className="mt-5 rounded-xl border border-slate-200/80 bg-white shadow-card">
-        <div className="border-b border-slate-100 px-6 py-3.5">
+        <div className={`flex items-center justify-between gap-3 px-6 py-3.5 ${searchMinimized ? '' : 'border-b border-slate-100'}`}>
           <h2 className="text-xs font-semibold text-slate-700">Search Record In Table</h2>
+          <button
+            type="button"
+            onClick={() => setSearchMinimized((prev) => !prev)}
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+            aria-expanded={!searchMinimized}
+          >
+            {searchMinimized ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+            {searchMinimized ? 'Expand' : 'Minimise'}
+          </button>
         </div>
-        <div className="grid gap-4 p-6 md:grid-cols-3">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Name</label>
-            <input
-              value={filters.name}
-              onChange={(e) => setFilters({ ...filters, name: e.target.value })}
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Call Date</label>
-            <div className="flex gap-2">
-              <DateInput
-                value={filters.callDateFrom}
-                onChange={(e) => setFilters({ ...filters, callDateFrom: e.target.value })}
-                className="input-field"
-              />
-              <DateInput
-                value={filters.callDateTo}
-                onChange={(e) => setFilters({ ...filters, callDateTo: e.target.value })}
-                className="input-field"
-              />
+        {!searchMinimized && (
+          <>
+            <div className="grid gap-4 p-6 md:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Name</label>
+                <input
+                  value={filters.name}
+                  onChange={(e) => setFilters({ ...filters, name: e.target.value })}
+                  className="input-field"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Call Date</label>
+                <div className="flex gap-2">
+                  <DateInput
+                    value={filters.callDateFrom}
+                    onChange={(e) => setFilters({ ...filters, callDateFrom: e.target.value })}
+                    className="input-field"
+                  />
+                  <DateInput
+                    value={filters.callDateTo}
+                    onChange={(e) => setFilters({ ...filters, callDateTo: e.target.value })}
+                    className="input-field"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Phone</label>
+                <input
+                  value={filters.phone}
+                  onChange={(e) => setFilters({ ...filters, phone: e.target.value })}
+                  className="input-field"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Assigned Client</label>
+                <select
+                  value={filters.assignedClientId}
+                  onChange={(e) => setFilters({ ...filters, assignedClientId: e.target.value })}
+                  className="select-field"
+                >
+                  <option value="">- All Clients -</option>
+                  {clientAccounts.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Issue Type</label>
+                <select
+                  value={filters.issueType}
+                  onChange={(e) => setFilters({ ...filters, issueType: e.target.value })}
+                  className="select-field"
+                >
+                  <option value="">- Select Issue Type -</option>
+                  {ISSUE_TYPES.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Lead Status</label>
+                <select
+                  value={filters.leadStatus}
+                  onChange={(e) => setFilters({ ...filters, leadStatus: e.target.value })}
+                  className="select-field"
+                >
+                  <option value="">- Select -</option>
+                  {LEAD_STATUSES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Post Code</label>
+                <input
+                  value={filters.postCode}
+                  onChange={(e) => setFilters({ ...filters, postCode: e.target.value })}
+                  className="input-field"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Post Code Serviceable</label>
+                <select
+                  value={filters.postCodeServiceable}
+                  onChange={(e) => setFilters({ ...filters, postCodeServiceable: e.target.value })}
+                  className="select-field"
+                >
+                  <option value="">- Post Code Status -</option>
+                  <option value="yes">Serviceable</option>
+                  <option value="no">Not Serviceable</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Device Type</label>
+                <select
+                  value={filters.deviceType}
+                  onChange={(e) => setFilters({ ...filters, deviceType: e.target.value })}
+                  className="select-field"
+                >
+                  <option value="">- Select Device Type -</option>
+                  {DEVICE_TYPES.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Phone</label>
-            <input
-              value={filters.phone}
-              onChange={(e) => setFilters({ ...filters, phone: e.target.value })}
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Assigned Client</label>
-            <select
-              value={filters.assignedClientId}
-              onChange={(e) => setFilters({ ...filters, assignedClientId: e.target.value })}
-              className="select-field"
-            >
-              <option value="">- All Clients -</option>
-              {clientAccounts.map((c) => (
-                <option key={c.id} value={c.id}>{c.name}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Issue Type</label>
-            <select
-              value={filters.issueType}
-              onChange={(e) => setFilters({ ...filters, issueType: e.target.value })}
-              className="select-field"
-            >
-              <option value="">- Select Issue Type -</option>
-              {ISSUE_TYPES.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Lead Status</label>
-            <select
-              value={filters.leadStatus}
-              onChange={(e) => setFilters({ ...filters, leadStatus: e.target.value })}
-              className="select-field"
-            >
-              <option value="">- Select -</option>
-              {LEAD_STATUSES.map((s) => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Post Code</label>
-            <input
-              value={filters.postCode}
-              onChange={(e) => setFilters({ ...filters, postCode: e.target.value })}
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Post Code Serviceable</label>
-            <select
-              value={filters.postCodeServiceable}
-              onChange={(e) => setFilters({ ...filters, postCodeServiceable: e.target.value })}
-              className="select-field"
-            >
-              <option value="">- Post Code Status -</option>
-              <option value="yes">Serviceable</option>
-              <option value="no">Not Serviceable</option>
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Device Type</label>
-            <select
-              value={filters.deviceType}
-              onChange={(e) => setFilters({ ...filters, deviceType: e.target.value })}
-              className="select-field"
-            >
-              <option value="">- Select Device Type -</option>
-              {DEVICE_TYPES.map((d) => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="flex gap-3 border-t border-slate-100 px-6 py-4">
-          <button onClick={handleReset} className="btn-secondary">
-            <RotateCcw size={15} />
-            Reset Search
-          </button>
-          <button onClick={handleSearch} className="btn-primary">
-            <Search size={15} />
-            Search Records
-          </button>
-        </div>
+            <div className="flex gap-3 border-t border-slate-100 px-6 py-4">
+              <button onClick={handleReset} className="btn-secondary">
+                <RotateCcw size={15} />
+                Reset Search
+              </button>
+              <button onClick={handleSearch} className="btn-primary">
+                <Search size={15} />
+                Search Records
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Table Controls */}
