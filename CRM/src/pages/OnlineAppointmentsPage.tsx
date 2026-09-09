@@ -50,6 +50,7 @@ export default function OnlineAppointmentsPage() {
 
   const [filters, setFilters] = useState<OnsiteFilters>(emptyFilters);
   const [appliedFilters, setAppliedFilters] = useState<OnsiteFilters>(emptyFilters);
+  const [searchMinimized, setSearchMinimized] = useState(true);
   const [perPage, setPerPage] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
   const [alphaFilter, setAlphaFilter] = useState('');
@@ -162,92 +163,105 @@ export default function OnlineAppointmentsPage() {
 
       {/* Search Panel */}
       <div className="mt-5 rounded-xl border border-slate-200/80 bg-white shadow-card">
-        <div className="border-b border-slate-100 px-6 py-3.5">
+        <div className={`flex items-center justify-between gap-3 px-6 py-3.5 ${searchMinimized ? '' : 'border-b border-slate-100'}`}>
           <h2 className="text-sm font-semibold text-slate-700">Search Record in Table</h2>
-        </div>
-        <div className="grid gap-4 p-6 md:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Name</label>
-            <input value={filters.name} onChange={(e) => setFilters({ ...filters, name: e.target.value })} className="input-field" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Payment Taken Through</label>
-            <select value={filters.paymentTakenThrough} onChange={(e) => setFilters({ ...filters, paymentTakenThrough: e.target.value })} className="select-field">
-              <option value="">- Select -</option>
-              {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Phone</label>
-            <input value={filters.phone} onChange={(e) => setFilters({ ...filters, phone: e.target.value })} className="input-field" />
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Issue Status</label>
-            <select value={filters.issueStatus} onChange={(e) => setFilters({ ...filters, issueStatus: e.target.value })} className="select-field">
-              <option value="">- Select -</option>
-              {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Appointment Date</label>
-            <div className="flex gap-2">
-              <DateInput value={filters.appointmentDateFrom} onChange={(e) => setFilters({ ...filters, appointmentDateFrom: e.target.value })} className="input-field" />
-              <DateInput value={filters.appointmentDateTo} onChange={(e) => setFilters({ ...filters, appointmentDateTo: e.target.value })} className="input-field" />
-            </div>
-            <div className="mt-1.5 flex gap-2 text-xs">
-              {(['prev', 'today', 'next'] as const).map((t) => (
-                <button key={t} onClick={() => setQuickDate('appointmentDateFrom', t)} className="text-brand-600 hover:underline">
-                  {t === 'prev' ? 'Pre Date' : t === 'today' ? 'Today' : 'Next Date'}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Call Date</label>
-            <div className="flex gap-2">
-              <DateInput value={filters.callDateFrom} onChange={(e) => setFilters({ ...filters, callDateFrom: e.target.value })} className="input-field" />
-              <DateInput value={filters.callDateTo} onChange={(e) => setFilters({ ...filters, callDateTo: e.target.value })} className="input-field" />
-            </div>
-            <div className="mt-1.5 flex gap-2 text-xs">
-              {(['prev', 'today', 'next'] as const).map((t) => (
-                <button key={t} onClick={() => setQuickDate('callDateFrom', t)} className="text-brand-600 hover:underline">
-                  {t === 'prev' ? 'Pre Date' : t === 'today' ? 'Today' : 'Next Date'}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">Assigned Client</label>
-            <select value={filters.assignedClientId} onChange={(e) => setFilters({ ...filters, assignedClientId: e.target.value })} className="select-field">
-              <option value="">- All Clients -</option>
-              {clientAccounts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">Lead Status</label>
-              <select value={filters.leadStatus} onChange={(e) => setFilters({ ...filters, leadStatus: e.target.value })} className="select-field">
-                <option value="">- Select -</option>
-                {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">Technician</label>
-              <select value={filters.technician} onChange={(e) => setFilters({ ...filters, technician: e.target.value })} className="select-field">
-                <option value="">- Select -</option>
-                {technicians.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-3 border-t border-slate-100 px-6 py-4">
-          <button onClick={handleReset} className="btn-secondary">
-            <RotateCcw size={15} /> Reset Search
-          </button>
-          <button onClick={handleSearch} className="btn-primary">
-            <Search size={15} /> Search Records
+          <button
+            type="button"
+            onClick={() => setSearchMinimized((prev) => !prev)}
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+            aria-expanded={!searchMinimized}
+          >
+            {searchMinimized ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+            {searchMinimized ? 'Expand' : 'Minimise'}
           </button>
         </div>
+        {!searchMinimized && (
+          <>
+            <div className="grid gap-4 p-6 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Name</label>
+                <input value={filters.name} onChange={(e) => setFilters({ ...filters, name: e.target.value })} className="input-field" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Payment Taken Through</label>
+                <select value={filters.paymentTakenThrough} onChange={(e) => setFilters({ ...filters, paymentTakenThrough: e.target.value })} className="select-field">
+                  <option value="">- Select -</option>
+                  {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Phone</label>
+                <input value={filters.phone} onChange={(e) => setFilters({ ...filters, phone: e.target.value })} className="input-field" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Issue Status</label>
+                <select value={filters.issueStatus} onChange={(e) => setFilters({ ...filters, issueStatus: e.target.value })} className="select-field">
+                  <option value="">- Select -</option>
+                  {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Appointment Date</label>
+                <div className="flex gap-2">
+                  <DateInput value={filters.appointmentDateFrom} onChange={(e) => setFilters({ ...filters, appointmentDateFrom: e.target.value })} className="input-field" />
+                  <DateInput value={filters.appointmentDateTo} onChange={(e) => setFilters({ ...filters, appointmentDateTo: e.target.value })} className="input-field" />
+                </div>
+                <div className="mt-1.5 flex gap-2 text-xs">
+                  {(['prev', 'today', 'next'] as const).map((t) => (
+                    <button key={t} onClick={() => setQuickDate('appointmentDateFrom', t)} className="text-brand-600 hover:underline">
+                      {t === 'prev' ? 'Pre Date' : t === 'today' ? 'Today' : 'Next Date'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Call Date</label>
+                <div className="flex gap-2">
+                  <DateInput value={filters.callDateFrom} onChange={(e) => setFilters({ ...filters, callDateFrom: e.target.value })} className="input-field" />
+                  <DateInput value={filters.callDateTo} onChange={(e) => setFilters({ ...filters, callDateTo: e.target.value })} className="input-field" />
+                </div>
+                <div className="mt-1.5 flex gap-2 text-xs">
+                  {(['prev', 'today', 'next'] as const).map((t) => (
+                    <button key={t} onClick={() => setQuickDate('callDateFrom', t)} className="text-brand-600 hover:underline">
+                      {t === 'prev' ? 'Pre Date' : t === 'today' ? 'Today' : 'Next Date'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-500">Assigned Client</label>
+                <select value={filters.assignedClientId} onChange={(e) => setFilters({ ...filters, assignedClientId: e.target.value })} className="select-field">
+                  <option value="">- All Clients -</option>
+                  {clientAccounts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">Lead Status</label>
+                  <select value={filters.leadStatus} onChange={(e) => setFilters({ ...filters, leadStatus: e.target.value })} className="select-field">
+                    <option value="">- Select -</option>
+                    {LEAD_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-500">Technician</label>
+                  <select value={filters.technician} onChange={(e) => setFilters({ ...filters, technician: e.target.value })} className="select-field">
+                    <option value="">- Select -</option>
+                    {technicians.map((t) => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 border-t border-slate-100 px-6 py-4">
+              <button onClick={handleReset} className="btn-secondary">
+                <RotateCcw size={15} /> Reset Search
+              </button>
+              <button onClick={handleSearch} className="btn-primary">
+                <Search size={15} /> Search Records
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Table Controls */}
