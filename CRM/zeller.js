@@ -55,6 +55,9 @@ export function getZellerConfig() {
     webhookSecret: process.env.ZELLER_WEBHOOK_SECRET || '',
     currency: (process.env.ZELLER_CURRENCY || 'AUD').toUpperCase(),
     mockMode: process.env.ZELLER_MOCK_MODE === 'true',
+    successUrl:
+      process.env.ZELLER_SUCCESS_URL || 'https://orcait.com.au/thank-you',
+    cancelUrl: process.env.ZELLER_CANCEL_URL || 'https://orcait.com.au/',
   };
 }
 
@@ -107,6 +110,9 @@ export async function createCheckoutSession({
     currency: config.currency,
     reference_id: reference,
     description: description || `Invoice ${reference}`,
+    success_url: config.successUrl,
+    cancel_url: config.cancelUrl,
+    return_url: config.successUrl,
     customer: {
       name: customer?.name || '',
       email: customer?.email || undefined,
