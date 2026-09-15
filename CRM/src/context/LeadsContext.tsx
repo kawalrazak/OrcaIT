@@ -325,7 +325,7 @@ export function LeadsProvider({ children }: { children: ReactNode }) {
 
   const updateLead = useCallback((id: string, updates: Partial<Lead>) => {
     setLeads((prev) => {
-      const updated = prev.map((l) => (l.id === id ? { ...l, ...updates } : l));
+      const updated = sortLeads(prev.map((l) => (l.id === id ? { ...l, ...updates } : l)));
       cacheLeads(updated);
 
       const target = updated.find((l) => l.id === id);

@@ -2,6 +2,8 @@ import { FormEvent, useState } from 'react';
 import { FAR_TECH_OPTIONS, LEAD_STATUSES } from '../data/constants';
 import type { Lead, LeadHistoryEntry } from '../types';
 
+const PAYMENT_RECEIVED_OPTIONS = ['Card', 'Cash'] as const;
+
 function statusBadgeClass(status: string) {
   switch (status) {
     case 'Not Fixed':
@@ -30,6 +32,17 @@ function formatHistoryDate() {
   });
 }
 
+function formatLeadDateNow() {
+  return new Date().toLocaleString('en-AU', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
 const fieldClass =
   'w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-xs text-slate-800 focus:border-brand-500 focus:outline-none';
 
@@ -49,6 +62,10 @@ export default function LeadInlineHistory({
   const [issueStatus, setIssueStatus] = useState('');
   const [leadStatus, setLeadStatus] = useState('');
   const [farTech, setFarTech] = useState<'Yes' | 'No'>(lead.farFromTech ? 'Yes' : 'No');
+  const [paymentMethod, setPaymentMethod] = useState('');
+  const [paymentAmount, setPaymentAmount] = useState(
+    lead.paymentAmount && lead.paymentAmount > 0 ? String(lead.paymentAmount) : '',
+  );
   const [comment, setComment] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -59,18 +76,35 @@ export default function LeadInlineHistory({
     e.preventDefault();
     if (!canEdit) return;
 
-    if (!issueStatus && !leadStatus && !comment.trim()) {
-      setError('Select a status or enter a comment before submitting.');
+    const amountValue = Number(paymentAmount);
+    const hasPayment = Boolean(paymentMethod);
+    const hasValidAmount = Number.isFinite(amountValue) && amountValue > 0;
+
+    if (hasPayment && !hasValidAmount) {
+      setError('Enter the payment amount received.');
+      return;
+    }
+    if (hasValidAmount && !hasPayment) {
+      setError('Select Card or Cash for the payment received.');
+      return;
+    }
+    if (!issueStatus && !leadStatus && !comment.trim() && !hasPayment) {
+      setError('Select a status, payment, or enter a comment before submitting.');
       return;
     }
 
     setError('');
     setSaving(true);
 
+    const paymentNote = hasPayment
+      ? `Payment received by ${paymentMethod} — $${amountValue.toFixed(2)}`
+      : '';
+    const historyComment = [comment.trim(), paymentNote].filter(Boolean).join(' · ');
+
     const entry: LeadHistoryEntry = {
       id: crypto.randomUUID(),
       user: currentUserName || 'Staff',
-      comment: comment.trim(),
+      comment: historyComment,
       farTech,
       date: formatHistoryDate(),
       issueStatus: issueStatus || undefined,
@@ -90,12 +124,26 @@ export default function LeadInlineHistory({
 
     if (comment.trim()) {
       updates.comment = comment.trim();
+    } else if (hasPayment && !(lead.comment || '').toLowerCase().includes('payment taken')) {
+      updates.comment = 'Payment taken.';
+    }
+
+    // Write payment onto the lead record itself (shows in the row above).
+    if (hasPayment) {
+      updates.paymentMethod = paymentMethod;
+      updates.paymentAmount = amountValue;
+      updates.date = formatLeadDateNow();
+      updates.submittedAt = new Date().toISOString();
     }
 
     onSave(updates);
     setIssueStatus('');
     setLeadStatus('');
     setComment('');
+    if (hasPayment) {
+      setPaymentMethod('');
+      setPaymentAmount(String(amountValue));
+    }
     setSaving(false);
   }
 
@@ -202,6 +250,44 @@ export default function LeadInlineHistory({
               </select>
             </div>
           </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-slate-600">
+                Payment received by
+              </label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className={fieldClass}
+              >
+                <option value="">- Not received -</option>
+                {PAYMENT_RECEIVED_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-slate-600">
+                Amount received $
+              </label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                className={fieldClass}
+                placeholder="e.g. 165.00"
+              />
+            </div>
+          </div>
+          {lead.paymentAmount != null && lead.paymentAmount > 0 && (
+            <p className="text-[11px] text-emerald-700">
+              Current on record: {lead.paymentMethod || 'Card'} — ${lead.paymentAmount.toFixed(2)}
+            </p>
+          )}
+
           <div>
             <label className="mb-1 block text-[11px] font-medium text-slate-600">Comment</label>
             <textarea
