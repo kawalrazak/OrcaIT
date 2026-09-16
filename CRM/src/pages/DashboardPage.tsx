@@ -1,5 +1,13 @@
 import { useMemo } from 'react';
-import { Users, CalendarCheck, Phone, TrendingUp, ClipboardList, BarChart3 } from 'lucide-react';
+import {
+  Users,
+  CalendarCheck,
+  Monitor,
+  Phone,
+  TrendingUp,
+  ClipboardList,
+  BarChart3,
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Breadcrumbs from '../components/Breadcrumbs';
 import CallsTrendChart from '../components/dashboard/CallsTrendChart';
@@ -12,6 +20,15 @@ import {
   getConversionSummary,
 } from '../utils/dashboardCharts';
 
+type StatCard = {
+  label: string;
+  value: number;
+  icon: typeof Users;
+  color: string;
+  light: string;
+  href?: string;
+};
+
 export default function DashboardPage() {
   const { user, isTechnician, isStaff, isAdministrator } = useAuth();
   const { leads, visibleLeads } = useLeads();
@@ -23,21 +40,52 @@ export default function DashboardPage() {
 
   const totalLeads = visibleLeads.length;
   const onsiteLeads = visibleLeads.filter((l) => l.isOnsite).length;
+  const onlineLeads = visibleLeads.filter((l) => !l.isOnsite).length;
   const converted = visibleLeads.filter((l) => l.status === 'Converted').length;
   const pending = visibleLeads.filter((l) => l.status === 'Assigned').length;
   const todayLeads = visibleLeads.filter((l) => l.callDate === new Date().toISOString().split('T')[0]).length;
 
-  const adminStats = [
+  const adminStats: StatCard[] = [
     { label: 'Total Leads', value: totalLeads, icon: Users, color: 'bg-brand-500', light: 'bg-brand-50 text-brand-600' },
-    { label: 'Onsite Appointments', value: onsiteLeads, icon: CalendarCheck, color: 'bg-emerald-500', light: 'bg-emerald-50 text-emerald-600' },
+    {
+      label: 'Online Appointments',
+      value: onlineLeads,
+      icon: Monitor,
+      color: 'bg-sky-500',
+      light: 'bg-sky-50 text-sky-600',
+      href: '/online-appointments',
+    },
+    {
+      label: 'Onsite Appointments',
+      value: onsiteLeads,
+      icon: CalendarCheck,
+      color: 'bg-emerald-500',
+      light: 'bg-emerald-50 text-emerald-600',
+      href: '/onsite-appointments',
+    },
     { label: "Today's Leads", value: todayLeads, icon: Phone, color: 'bg-amber-500', light: 'bg-amber-50 text-amber-600' },
     { label: 'Converted', value: converted, icon: TrendingUp, color: 'bg-purple-500', light: 'bg-purple-50 text-purple-600' },
   ];
 
-  const clientStats = [
-    { label: 'My Tasks', value: totalLeads, icon: ClipboardList, color: 'bg-brand-500', light: 'bg-brand-50 text-brand-600' },
+  const clientStats: StatCard[] = [
+    { label: 'My Tasks', value: totalLeads, icon: ClipboardList, color: 'bg-brand-500', light: 'bg-brand-50 text-brand-600', href: '/my-tasks' },
     { label: 'Pending', value: pending, icon: Phone, color: 'bg-amber-500', light: 'bg-amber-50 text-amber-600' },
-    { label: 'Onsite', value: onsiteLeads, icon: CalendarCheck, color: 'bg-emerald-500', light: 'bg-emerald-50 text-emerald-600' },
+    {
+      label: 'Online',
+      value: onlineLeads,
+      icon: Monitor,
+      color: 'bg-sky-500',
+      light: 'bg-sky-50 text-sky-600',
+      href: '/online-appointments',
+    },
+    {
+      label: 'Onsite',
+      value: onsiteLeads,
+      icon: CalendarCheck,
+      color: 'bg-emerald-500',
+      light: 'bg-emerald-50 text-emerald-600',
+      href: '/onsite-appointments',
+    },
     { label: 'Completed', value: converted, icon: TrendingUp, color: 'bg-purple-500', light: 'bg-purple-50 text-purple-600' },
   ];
 
@@ -60,26 +108,38 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map(({ label, value, icon: Icon, color, light }) => (
-          <div
-            key={label}
-            className="group rounded-xl border border-slate-200/80 bg-white p-5 shadow-card transition-all duration-300 hover:shadow-card-lg hover:-translate-y-0.5"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">{label}</p>
-                <p className="mt-1 text-3xl font-bold text-slate-800">{value}</p>
+      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        {stats.map(({ label, value, icon: Icon, color, light, href }) => {
+          const card = (
+            <div className="group rounded-xl border border-slate-200/80 bg-white p-5 shadow-card transition-all duration-300 hover:shadow-card-lg hover:-translate-y-0.5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">{label}</p>
+                  <p className="mt-1 text-3xl font-bold text-slate-800">{value}</p>
+                  {href && (
+                    <p className="mt-1 text-[11px] font-medium text-brand-600 opacity-0 transition group-hover:opacity-100">
+                      Open →
+                    </p>
+                  )}
+                </div>
+                <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${light} transition-transform group-hover:scale-110`}>
+                  <Icon size={22} />
+                </div>
               </div>
-              <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${light} transition-transform group-hover:scale-110`}>
-                <Icon size={22} />
+              <div className={`mt-4 h-1 w-full rounded-full ${color} opacity-20`}>
+                <div className={`h-full w-2/3 rounded-full ${color}`} />
               </div>
             </div>
-            <div className={`mt-4 h-1 w-full rounded-full ${color} opacity-20`}>
-              <div className={`h-full w-2/3 rounded-full ${color}`} />
-            </div>
-          </div>
-        ))}
+          );
+
+          return href ? (
+            <Link key={label} to={href} className="block">
+              {card}
+            </Link>
+          ) : (
+            <div key={label}>{card}</div>
+          );
+        })}
       </div>
 
       {isAdministrator && (
@@ -156,6 +216,9 @@ export default function DashboardPage() {
                       {!isTechnician && lead.assignedClientName && (
                         <span className="text-brand-600"> &middot; → {lead.assignedClientName}</span>
                       )}
+                      <span className="ml-1 text-slate-400">
+                        · {lead.isOnsite ? 'Onsite' : 'Online'}
+                      </span>
                     </p>
                   </div>
                 </div>
