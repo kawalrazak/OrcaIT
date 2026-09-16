@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Users, Phone, TrendingUp, ClipboardList, BarChart3, Monitor } from 'lucide-react';
+import { useMemo, type ReactNode } from 'react';
+import { Users, CalendarCheck, Phone, ClipboardList, BarChart3, Monitor } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Breadcrumbs from '../components/Breadcrumbs';
 import CallsTrendChart from '../components/dashboard/CallsTrendChart';
@@ -12,6 +12,15 @@ import {
   getConversionSummary,
 } from '../utils/dashboardCharts';
 
+type DashboardStat = {
+  label: string;
+  value: number;
+  icon: typeof Users;
+  color: string;
+  light: string;
+  href: string;
+  footer?: ReactNode;
+};
 export default function DashboardPage() {
   const { user, isTechnician, isStaff, isAdministrator } = useAuth();
   const { leads, visibleLeads } = useLeads();
@@ -22,24 +31,88 @@ export default function DashboardPage() {
   const conversionSummary = useMemo(() => getConversionSummary(chartLeads), [chartLeads]);
 
   const totalLeads = visibleLeads.length;
-  const onlineLeads = visibleLeads.filter((l) => !l.isOnsite).length;
   const onsiteLeads = visibleLeads.filter((l) => l.isOnsite).length;
-  const converted = visibleLeads.filter((l) => l.status === 'Converted').length;
+  const onlineLeads = visibleLeads.filter((l) => !l.isOnsite).length;
   const pending = visibleLeads.filter((l) => l.status === 'Assigned').length;
   const todayLeads = visibleLeads.filter((l) => l.callDate === new Date().toISOString().split('T')[0]).length;
 
-  const adminStats = [
-    { label: 'Total Leads', value: totalLeads, icon: Users, color: 'bg-brand-500', light: 'bg-brand-50 text-brand-600', href: '/manage-leads' },
-    { label: 'Online Appointments', value: onlineLeads, icon: Monitor, color: 'bg-sky-500', light: 'bg-sky-50 text-sky-600', href: '/online-appointments' },
-    { label: "Today's Leads", value: todayLeads, icon: Phone, color: 'bg-amber-500', light: 'bg-amber-50 text-amber-600', href: '/manage-leads' },
-    { label: 'Converted', value: converted, icon: TrendingUp, color: 'bg-purple-500', light: 'bg-purple-50 text-purple-600', href: '/manage-leads' },
+  const adminStats: DashboardStat[] = [
+    {
+      label: 'Total Leads',
+      value: totalLeads,
+      icon: Users,
+      color: 'bg-brand-500',
+      light: 'bg-brand-50 text-brand-600',
+      href: '/manage-leads',
+      footer: (
+        <p className="mt-3 text-xs text-slate-500">
+          Onsite appointments: <span className="font-semibold text-slate-700">{onsiteLeads}</span>
+          {' · '}
+          <Link to="/onsite-appointments" className="font-medium text-brand-600 hover:underline">
+            View onsite
+          </Link>
+        </p>
+      ),
+    },
+    {
+      label: 'Onsite Appointments',
+      value: onsiteLeads,
+      icon: CalendarCheck,
+      color: 'bg-emerald-500',
+      light: 'bg-emerald-50 text-emerald-600',
+      href: '/onsite-appointments',
+    },
+    {
+      label: "Today's Leads",
+      value: todayLeads,
+      icon: Phone,
+      color: 'bg-amber-500',
+      light: 'bg-amber-50 text-amber-600',
+      href: '/manage-leads',
+    },
+    {
+      label: 'Online Appointments',
+      value: onlineLeads,
+      icon: Monitor,
+      color: 'bg-sky-500',
+      light: 'bg-sky-50 text-sky-600',
+      href: '/online-appointments',
+    },
   ];
 
-  const clientStats = [
-    { label: 'My Tasks', value: totalLeads, icon: ClipboardList, color: 'bg-brand-500', light: 'bg-brand-50 text-brand-600', href: '/my-tasks' },
-    { label: 'Pending', value: pending, icon: Phone, color: 'bg-amber-500', light: 'bg-amber-50 text-amber-600', href: '/my-tasks' },
-    { label: 'Online', value: onlineLeads, icon: Monitor, color: 'bg-sky-500', light: 'bg-sky-50 text-sky-600', href: '/online-appointments' },
-    { label: 'Completed', value: converted, icon: TrendingUp, color: 'bg-purple-500', light: 'bg-purple-50 text-purple-600', href: '/my-tasks' },
+  const clientStats: DashboardStat[] = [
+    {
+      label: 'My Tasks',
+      value: totalLeads,
+      icon: ClipboardList,
+      color: 'bg-brand-500',
+      light: 'bg-brand-50 text-brand-600',
+      href: '/my-tasks',
+    },
+    {
+      label: 'Pending',
+      value: pending,
+      icon: Phone,
+      color: 'bg-amber-500',
+      light: 'bg-amber-50 text-amber-600',
+      href: '/my-tasks',
+    },
+    {
+      label: 'Onsite',
+      value: onsiteLeads,
+      icon: CalendarCheck,
+      color: 'bg-emerald-500',
+      light: 'bg-emerald-50 text-emerald-600',
+      href: '/onsite-appointments',
+    },
+    {
+      label: 'Online',
+      value: onlineLeads,
+      icon: Monitor,
+      color: 'bg-sky-500',
+      light: 'bg-sky-50 text-sky-600',
+      href: '/online-appointments',
+    },
   ];
 
   const stats = isTechnician ? clientStats : adminStats;
@@ -62,37 +135,29 @@ export default function DashboardPage() {
       </div>
 
       <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map(({ label, value, icon: Icon, color, light, href }) => (
-          <Link
+        {stats.map(({ label, value, icon: Icon, color, light, href, footer }) => (
+          <div
             key={label}
-            to={href}
             className="group rounded-xl border border-slate-200/80 bg-white p-5 shadow-card transition-all duration-300 hover:shadow-card-lg hover:-translate-y-0.5"
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-500">{label}</p>
-                <p className="mt-1 text-3xl font-bold text-slate-800">{value}</p>
+            <Link to={href} className="block">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-500">{label}</p>
+                  <p className="mt-1 text-3xl font-bold text-slate-800">{value}</p>
+                </div>
+                <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${light} transition-transform group-hover:scale-110`}>
+                  <Icon size={22} />
+                </div>
               </div>
-              <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${light} transition-transform group-hover:scale-110`}>
-                <Icon size={22} />
+              <div className={`mt-4 h-1 w-full rounded-full ${color} opacity-20`}>
+                <div className={`h-full w-2/3 rounded-full ${color}`} />
               </div>
-            </div>
-            <div className={`mt-4 h-1 w-full rounded-full ${color} opacity-20`}>
-              <div className={`h-full w-2/3 rounded-full ${color}`} />
-            </div>
-          </Link>
+            </Link>
+            {footer}
+          </div>
         ))}
       </div>
-
-      {!isTechnician && (
-        <p className="mt-3 text-xs text-slate-500">
-          Onsite appointments: <span className="font-semibold text-slate-700">{onsiteLeads}</span>
-          {' · '}
-          <Link to="/onsite-appointments" className="font-medium text-brand-600 hover:underline">
-            View onsite
-          </Link>
-        </p>
-      )}
 
       {isAdministrator && (
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -168,10 +233,6 @@ export default function DashboardPage() {
                       {!isTechnician && lead.assignedClientName && (
                         <span className="text-brand-600"> &middot; → {lead.assignedClientName}</span>
                       )}
-                      <span className="text-slate-400">
-                        {' · '}
-                        {lead.isOnsite ? 'Onsite' : 'Online'}
-                      </span>
                     </p>
                   </div>
                 </div>
