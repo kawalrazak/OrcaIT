@@ -104,7 +104,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 items-stretch">
         {stats.map(({ label, value, icon: Icon, color, light, href }) => {
           const card = (
             <div className="w-full min-w-0 overflow-hidden group rounded-xl border border-slate-200/80 bg-white p-5 shadow-card transition-all duration-300 hover:shadow-card-lg hover:-translate-y-0.5">
@@ -129,11 +129,11 @@ export default function DashboardPage() {
           );
 
           return href ? (
-            <Link key={label} to={href} className="block w-full">
+            <Link key={label} to={href} className="block w-full h-full">
               {card}
             </Link>
           ) : (
-            <div key={label} className="w-full">
+            <div key={label} className="w-full h-full">
               {card}
             </div>
           );
