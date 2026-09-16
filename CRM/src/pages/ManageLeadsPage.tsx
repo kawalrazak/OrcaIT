@@ -830,6 +830,24 @@ function LeadRow({
                 >
                   {technicianSent ? 'Sent' : 'Technician'}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => openModal('invoice')}
+                  disabled={invoiceButtonDisabled}
+                  className={`w-full rounded px-1.5 py-0.5 text-[9px] font-medium transition-colors ${
+                    invoiceButtonDisabled
+                      ? 'cursor-not-allowed bg-slate-300 text-slate-500'
+                      : 'bg-slate-600 text-white hover:bg-slate-700'
+                  }`}
+                >
+                  {invoicePaid
+                    ? 'Invoice Paid'
+                    : invoiceChannelsDone
+                      ? 'Invoice Sent'
+                      : invoiceSmsSent || invoiceEmailSent
+                        ? 'Send Invoice…'
+                        : 'Send Invoice'}
+                </button>
               </div>
             ) : (
               <div className="space-y-0.5 px-1.5">
@@ -904,6 +922,28 @@ function LeadRow({
                       }`}
                     >
                       Tech: {technicianSent ? 'Sent' : 'Not Sent'}
+                    </p>
+                    <p
+                      className={`text-[8px] font-semibold ${
+                        invoicePaid
+                          ? 'text-emerald-700'
+                          : invoiceChannelsDone
+                            ? 'text-emerald-600'
+                            : invoiceSmsSent || invoiceEmailSent
+                              ? 'text-sky-600'
+                              : 'text-amber-600'
+                      }`}
+                    >
+                      Inv:{' '}
+                      {invoicePaid
+                        ? 'Paid'
+                        : invoiceChannelsDone
+                          ? 'Sent'
+                          : invoiceSmsSent
+                            ? 'SMS'
+                            : invoiceEmailSent
+                              ? 'Email'
+                              : 'Not Sent'}
                     </p>
                   </>
                 ) : (

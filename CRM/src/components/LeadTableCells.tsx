@@ -34,6 +34,9 @@ export function LeadTableCells({
   const outcome = lead.outcome?.trim() || '';
   const showFollowUp = outcome === 'Follow Up';
   const showOutcomeBadge = outcome !== '' && !showFollowUp;
+  const paymentTaken =
+    lead.invoiceStatus === 'paid' ||
+    (lead.paymentAmount != null && lead.paymentAmount > 0);
 
   return (
     <>
@@ -149,6 +152,11 @@ export function LeadTableCells({
           {showFollowUp && (
             <span className="rounded bg-red-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm ring-2 ring-red-200">
               Follow Up
+            </span>
+          )}
+          {!paymentTaken && (
+            <span className="text-[9px] font-medium tracking-wide text-amber-600/90">
+              Payment not taken
             </span>
           )}
         </div>
