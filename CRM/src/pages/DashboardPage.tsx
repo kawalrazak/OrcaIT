@@ -1,12 +1,5 @@
 import { useMemo } from 'react';
-import {
-  Users,
-  CalendarCheck,
-  Monitor,
-  Phone,
-  ClipboardList,
-  BarChart3,
-} from 'lucide-react';
+import { Users, Phone, TrendingUp, ClipboardList, BarChart3, Monitor } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Breadcrumbs from '../components/Breadcrumbs';
 import CallsTrendChart from '../components/dashboard/CallsTrendChart';
@@ -19,15 +12,6 @@ import {
   getConversionSummary,
 } from '../utils/dashboardCharts';
 
-type StatCard = {
-  label: string;
-  value: number;
-  icon: typeof Users;
-  color: string;
-  light: string;
-  href?: string;
-};
-
 export default function DashboardPage() {
   const { user, isTechnician, isStaff, isAdministrator } = useAuth();
   const { leads, visibleLeads } = useLeads();
@@ -38,51 +22,24 @@ export default function DashboardPage() {
   const conversionSummary = useMemo(() => getConversionSummary(chartLeads), [chartLeads]);
 
   const totalLeads = visibleLeads.length;
-  const onsiteLeads = visibleLeads.filter((l) => l.isOnsite).length;
   const onlineLeads = visibleLeads.filter((l) => !l.isOnsite).length;
+  const onsiteLeads = visibleLeads.filter((l) => l.isOnsite).length;
+  const converted = visibleLeads.filter((l) => l.status === 'Converted').length;
   const pending = visibleLeads.filter((l) => l.status === 'Assigned').length;
   const todayLeads = visibleLeads.filter((l) => l.callDate === new Date().toISOString().split('T')[0]).length;
 
-  const adminStats: StatCard[] = [
-    { label: 'Total Leads', value: totalLeads, icon: Users, color: 'bg-brand-500', light: 'bg-brand-50 text-brand-600' },
-    {
-      label: 'Online Appointments',
-      value: onlineLeads,
-      icon: Monitor,
-      color: 'bg-sky-500',
-      light: 'bg-sky-50 text-sky-600',
-      href: '/online-appointments',
-    },
-    {
-      label: 'Onsite Appointments',
-      value: onsiteLeads,
-      icon: CalendarCheck,
-      color: 'bg-emerald-500',
-      light: 'bg-emerald-50 text-emerald-600',
-      href: '/onsite-appointments',
-    },
-    { label: "Today's Leads", value: todayLeads, icon: Phone, color: 'bg-amber-500', light: 'bg-amber-50 text-amber-600' },
+  const adminStats = [
+    { label: 'Total Leads', value: totalLeads, icon: Users, color: 'bg-brand-500', light: 'bg-brand-50 text-brand-600', href: '/manage-leads' },
+    { label: 'Online Appointments', value: onlineLeads, icon: Monitor, color: 'bg-sky-500', light: 'bg-sky-50 text-sky-600', href: '/online-appointments' },
+    { label: "Today's Leads", value: todayLeads, icon: Phone, color: 'bg-amber-500', light: 'bg-amber-50 text-amber-600', href: '/manage-leads' },
+    { label: 'Converted', value: converted, icon: TrendingUp, color: 'bg-purple-500', light: 'bg-purple-50 text-purple-600', href: '/manage-leads' },
   ];
 
-  const clientStats: StatCard[] = [
+  const clientStats = [
     { label: 'My Tasks', value: totalLeads, icon: ClipboardList, color: 'bg-brand-500', light: 'bg-brand-50 text-brand-600', href: '/my-tasks' },
-    { label: 'Pending', value: pending, icon: Phone, color: 'bg-amber-500', light: 'bg-amber-50 text-amber-600' },
-    {
-      label: 'Online',
-      value: onlineLeads,
-      icon: Monitor,
-      color: 'bg-sky-500',
-      light: 'bg-sky-50 text-sky-600',
-      href: '/online-appointments',
-    },
-    {
-      label: 'Onsite',
-      value: onsiteLeads,
-      icon: CalendarCheck,
-      color: 'bg-emerald-500',
-      light: 'bg-emerald-50 text-emerald-600',
-      href: '/onsite-appointments',
-    },
+    { label: 'Pending', value: pending, icon: Phone, color: 'bg-amber-500', light: 'bg-amber-50 text-amber-600', href: '/my-tasks' },
+    { label: 'Online', value: onlineLeads, icon: Monitor, color: 'bg-sky-500', light: 'bg-sky-50 text-sky-600', href: '/online-appointments' },
+    { label: 'Completed', value: converted, icon: TrendingUp, color: 'bg-purple-500', light: 'bg-purple-50 text-purple-600', href: '/my-tasks' },
   ];
 
   const stats = isTechnician ? clientStats : adminStats;
@@ -104,41 +61,38 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4 items-stretch">
-        {stats.map(({ label, value, icon: Icon, color, light, href }) => {
-          const card = (
-            <div className="w-full min-w-0 overflow-hidden group rounded-xl border border-slate-200/80 bg-white p-5 shadow-card transition-all duration-300 hover:shadow-card-lg hover:-translate-y-0.5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="truncate text-sm font-medium text-slate-500">{label}</p>
-                  <p className="mt-1 text-3xl font-bold text-slate-800">{value}</p>
-                  {href && (
-                    <p className="mt-1 truncate text-[11px] font-medium text-brand-600 opacity-0 transition group-hover:opacity-100">
-                      Open →
-                    </p>
-                  )}
-                </div>
-                <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${light} transition-transform group-hover:scale-110`}>
-                  <Icon size={22} />
-                </div>
+      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {stats.map(({ label, value, icon: Icon, color, light, href }) => (
+          <Link
+            key={label}
+            to={href}
+            className="group rounded-xl border border-slate-200/80 bg-white p-5 shadow-card transition-all duration-300 hover:shadow-card-lg hover:-translate-y-0.5"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-slate-500">{label}</p>
+                <p className="mt-1 text-3xl font-bold text-slate-800">{value}</p>
               </div>
-              <div className={`mt-4 h-1 w-full rounded-full ${color} opacity-20`}>
-                <div className={`h-full w-2/3 rounded-full ${color}`} />
+              <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${light} transition-transform group-hover:scale-110`}>
+                <Icon size={22} />
               </div>
             </div>
-          );
-
-          return href ? (
-            <Link key={label} to={href} className="block w-full h-full">
-              {card}
-            </Link>
-          ) : (
-            <div key={label} className="w-full h-full">
-              {card}
+            <div className={`mt-4 h-1 w-full rounded-full ${color} opacity-20`}>
+              <div className={`h-full w-2/3 rounded-full ${color}`} />
             </div>
-          );
-        })}
+          </Link>
+        ))}
       </div>
+
+      {!isTechnician && (
+        <p className="mt-3 text-xs text-slate-500">
+          Onsite appointments: <span className="font-semibold text-slate-700">{onsiteLeads}</span>
+          {' · '}
+          <Link to="/onsite-appointments" className="font-medium text-brand-600 hover:underline">
+            View onsite
+          </Link>
+        </p>
+      )}
 
       {isAdministrator && (
         <div className="mt-8 grid gap-6 lg:grid-cols-2">
@@ -214,8 +168,9 @@ export default function DashboardPage() {
                       {!isTechnician && lead.assignedClientName && (
                         <span className="text-brand-600"> &middot; → {lead.assignedClientName}</span>
                       )}
-                      <span className="ml-1 text-slate-400">
-                        · {lead.isOnsite ? 'Onsite' : 'Online'}
+                      <span className="text-slate-400">
+                        {' · '}
+                        {lead.isOnsite ? 'Onsite' : 'Online'}
                       </span>
                     </p>
                   </div>
