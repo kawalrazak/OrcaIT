@@ -107,7 +107,7 @@ export default function DashboardPage() {
       <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map(({ label, value, icon: Icon, color, light, href }) => {
           const card = (
-            <div className="group rounded-xl border border-slate-200/80 bg-white p-5 shadow-card transition-all duration-300 hover:shadow-card-lg hover:-translate-y-0.5">
+            <div className="w-full group rounded-xl border border-slate-200/80 bg-white p-5 shadow-card transition-all duration-300 hover:shadow-card-lg hover:-translate-y-0.5">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-slate-500">{label}</p>
@@ -129,11 +129,13 @@ export default function DashboardPage() {
           );
 
           return href ? (
-            <Link key={label} to={href} className="block">
+            <Link key={label} to={href} className="block w-full">
               {card}
             </Link>
           ) : (
-            <div key={label}>{card}</div>
+            <div key={label} className="w-full">
+              {card}
+            </div>
           );
         })}
       </div>
