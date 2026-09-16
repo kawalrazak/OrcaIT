@@ -4,7 +4,6 @@ import {
   CalendarCheck,
   Monitor,
   Phone,
-  TrendingUp,
   ClipboardList,
   BarChart3,
 } from 'lucide-react';
@@ -41,7 +40,6 @@ export default function DashboardPage() {
   const totalLeads = visibleLeads.length;
   const onsiteLeads = visibleLeads.filter((l) => l.isOnsite).length;
   const onlineLeads = visibleLeads.filter((l) => !l.isOnsite).length;
-  const converted = visibleLeads.filter((l) => l.status === 'Converted').length;
   const pending = visibleLeads.filter((l) => l.status === 'Assigned').length;
   const todayLeads = visibleLeads.filter((l) => l.callDate === new Date().toISOString().split('T')[0]).length;
 
@@ -64,7 +62,6 @@ export default function DashboardPage() {
       href: '/onsite-appointments',
     },
     { label: "Today's Leads", value: todayLeads, icon: Phone, color: 'bg-amber-500', light: 'bg-amber-50 text-amber-600' },
-    { label: 'Converted', value: converted, icon: TrendingUp, color: 'bg-purple-500', light: 'bg-purple-50 text-purple-600' },
   ];
 
   const clientStats: StatCard[] = [
@@ -86,7 +83,6 @@ export default function DashboardPage() {
       light: 'bg-emerald-50 text-emerald-600',
       href: '/onsite-appointments',
     },
-    { label: 'Completed', value: converted, icon: TrendingUp, color: 'bg-purple-500', light: 'bg-purple-50 text-purple-600' },
   ];
 
   const stats = isTechnician ? clientStats : adminStats;
@@ -108,7 +104,7 @@ export default function DashboardPage() {
         </p>
       </div>
 
-      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map(({ label, value, icon: Icon, color, light, href }) => {
           const card = (
             <div className="group rounded-xl border border-slate-200/80 bg-white p-5 shadow-card transition-all duration-300 hover:shadow-card-lg hover:-translate-y-0.5">
