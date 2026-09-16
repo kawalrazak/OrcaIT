@@ -107,13 +107,13 @@ export default function DashboardPage() {
       <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map(({ label, value, icon: Icon, color, light, href }) => {
           const card = (
-            <div className="w-full group rounded-xl border border-slate-200/80 bg-white p-5 shadow-card transition-all duration-300 hover:shadow-card-lg hover:-translate-y-0.5">
+            <div className="w-full min-w-0 overflow-hidden group rounded-xl border border-slate-200/80 bg-white p-5 shadow-card transition-all duration-300 hover:shadow-card-lg hover:-translate-y-0.5">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-500">{label}</p>
+                  <p className="truncate text-sm font-medium text-slate-500">{label}</p>
                   <p className="mt-1 text-3xl font-bold text-slate-800">{value}</p>
                   {href && (
-                    <p className="mt-1 text-[11px] font-medium text-brand-600 opacity-0 transition group-hover:opacity-100">
+                    <p className="mt-1 truncate text-[11px] font-medium text-brand-600 opacity-0 transition group-hover:opacity-100">
                       Open →
                     </p>
                   )}
