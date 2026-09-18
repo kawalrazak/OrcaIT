@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { CheckCircle2, Home, Mail, Phone } from "lucide-react";
+import { Home, Mail, Phone } from "lucide-react";
 import { SiteHeader } from "@/components/site-header";
 import { ORCA_EMAIL, ORCA_PHONE_DISPLAY, ORCA_PHONE_TEL } from "@/data/contact";
 
 export const metadata: Metadata = {
   title: "Thank You",
-  description: "Your payment to Orca IT was received successfully. Thank you.",
+  description: "Thank you for using Orca IT. We appreciate your trust in our service.",
   robots: {
     index: false,
     follow: false,
@@ -36,19 +36,13 @@ export default function ThankYouPage() {
           unoptimized
         />
 
-        <div className="mt-10 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm font-bold text-emerald-700 shadow-sm ring-1 ring-emerald-100">
-          <CheckCircle2 className="size-5" />
-          Payment received
-        </div>
-
-        <h1 className="mt-6 max-w-2xl text-4xl font-extrabold leading-[1.05] tracking-[-0.05em] text-brand-ink sm:text-5xl">
+        <h1 className="mt-10 max-w-2xl text-4xl font-extrabold leading-[1.05] tracking-[-0.05em] text-brand-ink sm:text-5xl">
           Thank you for using our service
         </h1>
 
         <p className="mt-5 max-w-xl text-base font-medium leading-relaxed text-brand-navy/75 sm:text-lg">
-          We appreciate your trust in Orca IT. Your payment was successful, and a
-          confirmation may also appear in your email or bank app. If you need a
-          receipt or have any questions, we’re here to help.
+          We appreciate your trust in Orca IT. If you need a receipt or have any
+          questions, we’re here to help.
         </p>
 
         <div className="mt-10 grid w-full max-w-2xl gap-3 sm:grid-cols-2">
@@ -73,8 +67,8 @@ export default function ThankYouPage() {
             What happens next
           </p>
           <ul className="mt-4 space-y-3 text-sm font-semibold text-brand-navy/80">
-            <li>Your payment has been recorded against your Orca IT invoice.</li>
             <li>Our team will continue or complete your support as arranged.</li>
+            <li>You’ll hear from us if any further action is needed on your side.</li>
             <li>
               Need help sooner? Call us on {ORCA_PHONE_DISPLAY} or email {ORCA_EMAIL}.
             </li>
