@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { Home, Mail, Phone } from "lucide-react";
-import { SiteHeader } from "@/components/site-header";
-import { ORCA_EMAIL, ORCA_PHONE_DISPLAY, ORCA_PHONE_TEL } from "@/data/contact";
+import { Home, Mail } from "lucide-react";
+import { ORCA_EMAIL, ORCA_PHONE_DISPLAY } from "@/data/contact";
 
 export const metadata: Metadata = {
   title: "Thank You",
@@ -23,9 +22,7 @@ export default function ThankYouPage() {
         <div className="hero-grid absolute inset-0 opacity-40" />
       </div>
 
-      <SiteHeader showActions={false} />
-
-      <section className="relative mx-auto flex min-h-[calc(100vh-5rem)] max-w-4xl flex-col items-center justify-center px-5 py-16 text-center lg:px-8 lg:py-24">
+      <section className="relative mx-auto flex min-h-screen max-w-4xl flex-col items-center justify-center px-5 py-16 text-center lg:px-8 lg:py-24">
         <Image
           src="/orca-logo.png?v=5"
           alt="Orca IT"
@@ -45,22 +42,13 @@ export default function ThankYouPage() {
           questions, we’re here to help.
         </p>
 
-        <div className="mt-10 grid w-full max-w-2xl gap-3 sm:grid-cols-2">
-          <a
-            href={`tel:${ORCA_PHONE_TEL}`}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-brand-fun px-5 py-3.5 text-sm font-bold text-white shadow-lg shadow-brand-fun/20 transition hover:brightness-110"
-          >
-            <Phone className="size-4" />
-            Call {ORCA_PHONE_DISPLAY}
-          </a>
-          <a
-            href={`mailto:${ORCA_EMAIL}`}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3.5 text-sm font-bold text-brand-navy ring-1 ring-brand-sky/50 transition hover:bg-brand-mist"
-          >
-            <Mail className="size-4" />
-            Email {ORCA_EMAIL}
-          </a>
-        </div>
+        <a
+          href={`mailto:${ORCA_EMAIL}`}
+          className="mt-10 inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-5 py-3.5 text-sm font-bold text-brand-navy ring-1 ring-brand-sky/50 transition hover:bg-brand-mist"
+        >
+          <Mail className="size-4" />
+          Email {ORCA_EMAIL}
+        </a>
 
         <div className="mt-12 w-full max-w-2xl rounded-[2rem] border border-white/80 bg-white/80 p-6 text-left shadow-sm backdrop-blur sm:p-8">
           <p className="text-xs font-black uppercase tracking-[0.18em] text-brand-fun">
