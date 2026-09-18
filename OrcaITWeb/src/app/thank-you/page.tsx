@@ -7,7 +7,7 @@ import { ORCA_EMAIL, ORCA_PHONE_DISPLAY, ORCA_PHONE_TEL } from "@/data/contact";
 
 export const metadata: Metadata = {
   title: "Thank You",
-  description: "Thank you for using Orca IT services. Your payment was received successfully.",
+  description: "Your payment to Orca IT was received successfully. Thank you.",
   robots: {
     index: false,
     follow: false,
@@ -42,7 +42,7 @@ export default function ThankYouPage() {
         </div>
 
         <h1 className="mt-6 max-w-2xl text-4xl font-extrabold leading-[1.05] tracking-[-0.05em] text-brand-ink sm:text-5xl">
-          Thank you for using our services
+          Thank you for using our service
         </h1>
 
         <p className="mt-5 max-w-xl text-base font-medium leading-relaxed text-brand-navy/75 sm:text-lg">
