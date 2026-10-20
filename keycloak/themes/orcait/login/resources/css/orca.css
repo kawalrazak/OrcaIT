@@ -1,0 +1,152 @@
+.login-pf body,
+body#keycloak-bg {
+  background: linear-gradient(145deg, #002366 0%, #1e3a8a 50%, #4169e1 100%) !important;
+  background-image: none !important;
+  min-height: 100vh;
+}
+
+body#keycloak-bg::before,
+body#keycloak-bg::after {
+  content: "";
+  position: fixed;
+  width: 24rem;
+  height: 24rem;
+  border-radius: 999px;
+  filter: blur(70px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+body#keycloak-bg::before {
+  top: -8rem;
+  left: -8rem;
+  background: rgba(65, 105, 225, 0.45);
+}
+
+body#keycloak-bg::after {
+  right: -8rem;
+  bottom: -8rem;
+  background: rgba(109, 207, 246, 0.28);
+}
+
+.pf-v5-c-login {
+  position: relative;
+  z-index: 1;
+  padding-block: 2rem;
+}
+
+.pf-v5-c-login__container {
+  grid-template-columns: min(28rem, calc(100vw - 2rem));
+}
+
+#kc-header {
+  margin-bottom: 0.25rem;
+}
+
+#kc-header-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.85rem;
+  font-size: 0 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  line-height: 0 !important;
+  color: transparent !important;
+}
+
+#kc-header-wrapper::before {
+  content: "";
+  display: block;
+  width: min(280px, 78vw);
+  height: 108px;
+  background: url("../img/orca-it-logo.png") center / contain no-repeat;
+}
+
+#kc-header-wrapper::after {
+  content: "Patient & Friendly Tech Support";
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0.01em;
+  color: #d6e2ff !important;
+}
+
+.pf-v5-c-login__main {
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: #1e3a8a !important;
+  box-shadow: 0 8px 30px -4px rgba(65, 105, 225, 0.35);
+}
+
+.pf-v5-c-login__main-header {
+  border-top: none;
+  padding-top: 1.75rem;
+  display: block;
+}
+
+#kc-page-title {
+  color: #1e3a8a !important;
+  font-size: 1.15rem !important;
+  font-weight: 700 !important;
+  text-align: center;
+}
+
+#kc-page-title::after {
+  content: "Sign in with your organisation account";
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.4;
+  color: #64748b;
+}
+
+.pf-v5-c-login__main-body {
+  padding-bottom: 1.5rem;
+}
+
+.pf-v5-c-form__label,
+.pf-v5-c-form__label-text {
+  color: #475569 !important;
+  font-size: 0.8rem;
+}
+
+.pf-v5-c-form-control {
+  border: 1px solid #dbe3f4 !important;
+  border-radius: 8px !important;
+  background: #fff !important;
+  color: #0f172a !important;
+}
+
+.pf-v5-c-form-control::before,
+.pf-v5-c-form-control::after {
+  border: none !important;
+}
+
+.pf-v5-c-form-control:focus-within {
+  border-color: #4169e1 !important;
+  box-shadow: 0 0 0 3px rgba(65, 105, 225, 0.16);
+}
+
+.pf-v5-c-button.pf-m-primary {
+  border: none !important;
+  border-radius: 8px !important;
+  background-color: #4169e1 !important;
+  font-weight: 600;
+  padding-block: 0.7rem;
+}
+
+.pf-v5-c-button.pf-m-primary:hover {
+  background-color: #1e3a8a !important;
+}
+
+.orca-login-footer {
+  margin: 0.25rem 0 0.4rem;
+  text-align: center;
+  color: #4169e1;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}

@@ -3,6 +3,7 @@ import { FileEdit, Save, X } from 'lucide-react';
 import DateInput from './DateInput';
 import { ISSUE_TYPES, DEVICE_TYPES, OUTCOMES, APPOINTMENT_TYPES } from '../data/constants';
 import { leadToEditForm } from '../utils/leadForm';
+import { useToast } from '../context/ToastContext';
 import type { Account, EditLeadForm, Lead } from '../types';
 
 interface EditLeadModalProps {
@@ -48,6 +49,7 @@ export default function EditLeadModal({
 }: EditLeadModalProps) {
   const [form, setForm] = useState<EditLeadForm | null>(null);
   const [saving, setSaving] = useState(false);
+  const { notify } = useToast();
 
   useEffect(() => {
     if (lead && open) {
@@ -67,6 +69,11 @@ export default function EditLeadModal({
     setSaving(true);
     setTimeout(() => {
       onSave(form);
+      notify({
+        type: 'success',
+        title: 'Lead updated',
+        message: `${form.customerName || 'Lead'} was saved.`,
+      });
       setSaving(false);
       onClose();
     }, 300);

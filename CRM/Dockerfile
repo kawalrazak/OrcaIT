@@ -6,6 +6,12 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+ARG VITE_KEYCLOAK_URL=https://crm.orcait.com.au/auth
+ARG VITE_KEYCLOAK_REALM=orcait
+ARG VITE_KEYCLOAK_CLIENT_ID=orcait-crm
+ENV VITE_KEYCLOAK_URL=$VITE_KEYCLOAK_URL
+ENV VITE_KEYCLOAK_REALM=$VITE_KEYCLOAK_REALM
+ENV VITE_KEYCLOAK_CLIENT_ID=$VITE_KEYCLOAK_CLIENT_ID
 RUN npm run build
 
 # ---------- runtime ----------
@@ -19,7 +25,7 @@ RUN addgroup --system --gid 1001 nodejs \
 
 COPY package*.json ./
 RUN npm ci --omit=dev && npm cache clean --force
-COPY server.js leads-db.js zeller.js zeller-invoices-db.js activity-log.js email.js ./
+COPY server.js leads-db.js zeller.js zeller-invoices-db.js activity-log.js email.js keycloak-admin.js password-store.js ./
 COPY --from=build /app/dist ./dist
 
 # Persist website leads received from OrcaITWeb

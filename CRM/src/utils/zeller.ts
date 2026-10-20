@@ -1,3 +1,16 @@
+export function isPayablePaymentLink(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return false;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== 'https:') return false;
+    if (url.pathname.includes('/mock/') || url.pathname.startsWith('/mock')) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export interface ZellerCheckoutInvoice {
   id: string;
   leadId: string;

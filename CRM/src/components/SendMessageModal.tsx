@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, Send, Mail, User, Wrench, MapPin, Calendar, MessageSquare, Clock, FileText, Link2 } from 'lucide-react';
+import { X, Send, Mail, User, Wrench, MapPin, Calendar, MessageSquare, Clock, FileText } from 'lucide-react';
 import {
   buildInvoiceMessage,
   buildOnlineQuoteMessage,
@@ -8,6 +8,7 @@ import {
   defaultQuoteFees,
 } from '../utils/sms';
 import type { Lead } from '../types';
+import { isPayablePaymentLink } from '../utils/zeller';
 
 export type MessageTarget = 'customer' | 'technician' | 'invoice' | 'quote';
 
@@ -29,8 +30,7 @@ interface SendMessageModalProps {
   onInvoiceAmountChange?: (value: string) => void;
   invoicePaymentUrl?: string;
   invoiceReferenceId?: string;
-  creatingCheckout?: boolean;
-  onCreateCheckout?: () => void;
+  onInvoicePaymentUrlChange?: (value: string) => void;
   invoiceSmsSent?: boolean;
   invoiceEmailSent?: boolean;
 }
@@ -52,8 +52,7 @@ export default function SendMessageModal({
   onInvoiceAmountChange,
   invoicePaymentUrl,
   invoiceReferenceId,
-  creatingCheckout = false,
-  onCreateCheckout,
+  onInvoicePaymentUrlChange,
   invoiceSmsSent = false,
   invoiceEmailSent = false,
 }: SendMessageModalProps) {
@@ -159,10 +158,10 @@ export default function SendMessageModal({
 
   const canSendQuote = isOnsiteQuote ? visitTime.trim().length > 0 : true;
   const canSendInvoice = isInvoice
-    ? Number(invoiceAmount) > 0 && Boolean(invoicePaymentUrl?.trim())
+    ? Number(invoiceAmount) > 0 && isPayablePaymentLink(invoicePaymentUrl || '')
     : true;
   const hasEmail = Boolean(lead.email?.trim());
-  const busy = sending || sendingEmail || creatingCheckout;
+  const busy = sending || sendingEmail;
   const headerTitle = isInvoice
     ? 'Send Invoice'
     : isOnlineQuote
@@ -171,7 +170,7 @@ export default function SendMessageModal({
         ? 'Send Quote'
         : 'Send to Technician';
   const headerSubtitle = isInvoice
-    ? 'Create a Zeller checkout link, then send by SMS and/or email'
+    ? 'Paste a Zeller payment link, then send by SMS and/or email'
     : isQuote
       ? 'Quote message auto-fills with customer name & fees'
       : 'Review message details before sending';
@@ -269,7 +268,7 @@ export default function SendMessageModal({
           {isInvoice && (
             <div className="rounded-xl border border-violet-100 bg-violet-50/50 p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-violet-700">
-                Zeller Checkout Session
+                Zeller payment link
               </p>
               <div className="space-y-3">
                 <div>
@@ -284,31 +283,36 @@ export default function SendMessageModal({
                     placeholder="e.g. 149.00"
                   />
                 </div>
-                <button
-                  type="button"
-                  onClick={onCreateCheckout}
-                  disabled={creatingCheckout || !(Number(invoiceAmount) > 0)}
-                  className="btn-secondary w-full"
-                >
-                  <Link2 size={14} />
-                  {creatingCheckout
-                    ? 'Creating Zeller link...'
-                    : invoicePaymentUrl
-                      ? 'Refresh Zeller payment link'
-                      : 'Create Zeller payment link'}
-                </button>
+                <p className="text-[11px] leading-5 text-slate-600">
+                  Zeller does not let this CRM create the checkout itself yet. In the{' '}
+                  <a
+                    href="https://dashboard.myzeller.com/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-semibold text-violet-700 underline"
+                  >
+                    Zeller Dashboard
+                  </a>
+                  , open Virtual Terminal, enter this amount, choose Copy Link, then paste that link here.
+                </p>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-700">Zeller payment link *</label>
+                  <input
+                    type="url"
+                    value={invoicePaymentUrl ?? ''}
+                    onChange={(e) => onInvoicePaymentUrlChange?.(e.target.value)}
+                    className="input-field"
+                    placeholder="https://..."
+                  />
+                </div>
+                {invoicePaymentUrl && !isPayablePaymentLink(invoicePaymentUrl) && (
+                  <p className="text-[11px] text-amber-700">
+                    Paste the https link copied from Zeller. Practice links are not accepted.
+                  </p>
+                )}
                 {invoiceReferenceId && (
                   <p className="text-[11px] text-slate-600">
                     Reference: <span className="font-semibold">{invoiceReferenceId}</span>
-                  </p>
-                )}
-                {invoicePaymentUrl ? (
-                  <p className="break-all rounded-lg bg-white px-3 py-2 text-[11px] text-violet-700 ring-1 ring-violet-200">
-                    {invoicePaymentUrl}
-                  </p>
-                ) : (
-                  <p className="text-[11px] text-amber-700">
-                    Create a Zeller payment link before sending by SMS or email.
                   </p>
                 )}
                 <div className="flex flex-wrap gap-2 text-[11px]">

@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
-import { Users, CalendarCheck, Phone, ClipboardList, BarChart3, Monitor } from 'lucide-react';
+import { Users, CalendarCheck, Phone, BarChart3, Monitor } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Breadcrumbs from '../components/Breadcrumbs';
 import CallsTrendChart from '../components/dashboard/CallsTrendChart';
@@ -23,18 +23,17 @@ type DashboardStat = {
 };
 export default function DashboardPage() {
   const { user, isTechnician, isStaff, isAdministrator } = useAuth();
-  const { leads, visibleLeads } = useLeads();
+  const { leads } = useLeads();
 
-  const chartLeads = isAdministrator ? leads : visibleLeads;
+  const chartLeads = leads;
   const callsTrend = useMemo(() => buildCallsTrendData(chartLeads, 14), [chartLeads]);
   const pipelineTrend = useMemo(() => buildPipelineTrendData(chartLeads, 14), [chartLeads]);
   const conversionSummary = useMemo(() => getConversionSummary(chartLeads), [chartLeads]);
 
-  const totalLeads = visibleLeads.length;
-  const onsiteLeads = visibleLeads.filter((l) => l.isOnsite).length;
-  const onlineLeads = visibleLeads.filter((l) => !l.isOnsite).length;
-  const pending = visibleLeads.filter((l) => l.status === 'Assigned').length;
-  const todayLeads = visibleLeads.filter((l) => l.callDate === new Date().toISOString().split('T')[0]).length;
+  const totalLeads = leads.length;
+  const onsiteLeads = leads.filter((l) => l.isOnsite).length;
+  const onlineLeads = leads.filter((l) => !l.isOnsite).length;
+  const todayLeads = leads.filter((l) => l.callDate === new Date().toISOString().split('T')[0]).length;
 
   const adminStats: DashboardStat[] = [
     {
@@ -80,42 +79,7 @@ export default function DashboardPage() {
     },
   ];
 
-  const clientStats: DashboardStat[] = [
-    {
-      label: 'My Tasks',
-      value: totalLeads,
-      icon: ClipboardList,
-      color: 'bg-brand-500',
-      light: 'bg-brand-50 text-brand-600',
-      href: '/my-tasks',
-    },
-    {
-      label: 'Pending',
-      value: pending,
-      icon: Phone,
-      color: 'bg-amber-500',
-      light: 'bg-amber-50 text-amber-600',
-      href: '/my-tasks',
-    },
-    {
-      label: 'Onsite',
-      value: onsiteLeads,
-      icon: CalendarCheck,
-      color: 'bg-emerald-500',
-      light: 'bg-emerald-50 text-emerald-600',
-      href: '/onsite-appointments',
-    },
-    {
-      label: 'Online',
-      value: onlineLeads,
-      icon: Monitor,
-      color: 'bg-sky-500',
-      light: 'bg-sky-50 text-sky-600',
-      href: '/online-appointments',
-    },
-  ];
-
-  const stats = isTechnician ? clientStats : adminStats;
+  const stats = adminStats;
 
   return (
     <div>
@@ -127,7 +91,7 @@ export default function DashboardPage() {
         </h1>
         <p className="mt-1 text-slate-500">
           {isTechnician
-            ? 'Here are the tasks assigned to you by the coordinator.'
+            ? 'You can view every lead, add a lead, and update lead details.'
             : isStaff
               ? "Here's an overview of leads across your ORCA workspace."
               : "Here's an overview of all leads and assignments."}
@@ -203,24 +167,18 @@ export default function DashboardPage() {
 
       <div className="mt-8 rounded-xl border border-slate-200/80 bg-white shadow-card">
         <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-          <h2 className="text-lg font-semibold text-slate-800">
-            {isTechnician ? 'Recent Tasks' : 'Recent Leads'}
-          </h2>
-          {isTechnician && (
-            <Link to="/my-tasks" className="text-sm font-medium text-brand-600 hover:underline">
-              View all tasks
-            </Link>
-          )}
+          <h2 className="text-lg font-semibold text-slate-800">Recent Leads</h2>
+          <Link to="/manage-leads" className="text-sm font-medium text-brand-600 hover:underline">
+            View all leads
+          </Link>
         </div>
         <div className="divide-y divide-slate-100">
-          {visibleLeads.length === 0 ? (
+          {leads.length === 0 ? (
             <div className="px-6 py-12 text-center text-slate-400">
-              {isTechnician
-                ? 'No tasks assigned yet. A coordinator will assign leads to you.'
-                : 'No leads yet. Add your first lead to get started.'}
+              No leads yet. Add your first lead to get started.
             </div>
           ) : (
-            visibleLeads.slice(0, 5).map((lead) => (
+            leads.slice(0, 5).map((lead) => (
               <div key={lead.id} className="flex items-center justify-between px-6 py-4 transition-colors hover:bg-slate-50/50">
                 <div className="flex items-center gap-4">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-50 text-sm font-bold text-brand-600">
@@ -230,7 +188,7 @@ export default function DashboardPage() {
                     <p className="font-medium text-slate-800">{lead.name}</p>
                     <p className="text-sm text-slate-500">
                       {lead.issueType} &middot; {lead.phone}
-                      {!isTechnician && lead.assignedClientName && (
+                      {lead.assignedClientName && (
                         <span className="text-brand-600"> &middot; → {lead.assignedClientName}</span>
                       )}
                     </p>

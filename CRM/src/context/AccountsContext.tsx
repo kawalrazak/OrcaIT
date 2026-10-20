@@ -8,6 +8,7 @@ import {
 } from 'react';
 import type { Account, CreateClientForm, Permissions } from '../types';
 import { ACCOUNTS_STORAGE_KEY } from '../data/constants';
+import { keycloak } from '../lib/keycloak';
 import { DEFAULT_ADMIN } from '../data/defaultAccounts';
 import {
   migrateRole,
@@ -24,6 +25,7 @@ interface AccountsContextType {
   deleteClient: (id: string) => void;
   getAccountById: (id: string) => Account | undefined;
   authenticate: (username: string, password: string) => Account | null;
+  refreshUsers: () => Promise<void>;
 }
 
 const AccountsContext = createContext<AccountsContextType | null>(null);
@@ -144,6 +146,37 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
     [accounts],
   );
 
+  const refreshUsers = useCallback(async () => {
+    if (!keycloak.authenticated || !keycloak.token) return;
+    try {
+      await keycloak.updateToken(30);
+    } catch {
+      /* Use the current access token. */
+    }
+    if (!keycloak.token) return;
+    const response = await fetch('/api/users', {
+      headers: { Authorization: `Bearer ${keycloak.token}` },
+    });
+    if (!response.ok) return;
+    const data = await response.json();
+    if (!data?.ok || !Array.isArray(data.users)) return;
+    setAccounts(
+      data.users.map((user: Account & { role?: string }) =>
+        normalizeAccount({
+          id: user.id,
+          username: user.username,
+          password: '',
+          name: user.name,
+          email: user.email || '',
+          phone: user.phone || '',
+          role: user.role,
+          permissions: PERMISSIONS_BY_ROLE[migrateRole(user.role || 'support_associate')],
+          createdAt: user.createdAt || new Date().toISOString(),
+        }),
+      ),
+    );
+  }, []);
+
   const deleteClient = useCallback((id: string) => {
     setAccounts((prev) => {
       const updated = prev.filter((a) => a.id !== id || isAdministrator(a.role));
@@ -162,6 +195,7 @@ export function AccountsProvider({ children }: { children: ReactNode }) {
         deleteClient,
         getAccountById,
         authenticate,
+        refreshUsers,
       }}
     >
       {children}

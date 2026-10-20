@@ -31,6 +31,13 @@ services:
       context: ./CRM
     env_file:
       - ./CRM/.env
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080/auth
+      KEYCLOAK_REALM: orcait
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    depends_on:
+      - keycloak
     volumes:
       - crm_data:/app/data           # persists website leads for CRM
     restart: unless-stopped
@@ -64,6 +71,25 @@ services:
     depends_on:
       - crm
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.4
+    command: ["start", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME: crm.orcait.com.au
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_HOSTNAME_STRICT: "false"
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      - ./keycloak/import:/opt/keycloak/data/import:ro
+      - ./keycloak/themes/orcait:/opt/keycloak/themes/orcait:ro
+    restart: unless-stopped
+    expose:
+      - "8080"
+
   nginx:
     image: nginx:1.27-alpine
     depends_on:
@@ -83,3 +109,4 @@ volumes:
   orca_data:
   crm_data:
   facebook_bot_data:
+  keycloak_data:

@@ -1,0 +1,60 @@
+{
+  "realm": "orcait",
+  "enabled": true,
+  "displayName": "ORCA IT",
+  "loginTheme": "orcait",
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "roles": {
+    "realm": [
+      { "name": "administrator", "description": "Full CRM access" },
+      { "name": "service_coordinator", "description": "Assign and coordinate jobs" },
+      { "name": "support_associate", "description": "Lead intake" },
+      { "name": "technician", "description": "Assigned field work" }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "orcait-crm",
+      "name": "ORCA IT CRM",
+      "enabled": true,
+      "publicClient": true,
+      "protocol": "openid-connect",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://127.0.0.1:5173/*",
+        "http://localhost:5173/*",
+        "https://crm.orcait.com.au/*"
+      ],
+      "webOrigins": [
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+        "https://crm.orcait.com.au"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "admin",
+      "enabled": true,
+      "email": "admin@orcait.com.au",
+      "emailVerified": true,
+      "firstName": "ORCA",
+      "lastName": "Admin",
+      "realmRoles": ["administrator"],
+      "credentials": [
+        {
+          "type": "password",
+          "value": "admin123",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}

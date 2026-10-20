@@ -14,7 +14,7 @@ import { LeadTableCells } from '../components/LeadTableCells';
 import LeadInlineHistory from '../components/LeadInlineHistory';
 import { useLeads } from '../context/LeadsContext';
 import { useAuth } from '../context/AuthContext';
-import { hasPermission } from '../utils/permissions';
+import { canUseLeadActions, hasPermission } from '../utils/permissions';
 import { editFormToLeadUpdates } from '../utils/leadForm';
 import { LEAD_STATUSES, PAYMENT_METHODS } from '../data/constants';
 import type { EditLeadForm, Lead, OnsiteFilters } from '../types';
@@ -39,13 +39,13 @@ const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 const PER_PAGE_OPTIONS = [5, 10, 15, 20, 25, 30];
 
 export default function OnlineAppointmentsPage() {
-  const { visibleLeads } = useLeads();
+  const { leads } = useLeads();
   const { clientAccounts } = useAccounts();
-  const onlineLeads = useMemo(() => visibleLeads.filter((l) => !l.isOnsite), [visibleLeads]);
+  const onlineLeads = useMemo(() => leads.filter((l) => !l.isOnsite), [leads]);
 
   const technicians = useMemo(
-    () => [...new Set(visibleLeads.map((l) => l.technician).filter(Boolean) as string[])],
-    [visibleLeads],
+    () => [...new Set(leads.map((l) => l.technician).filter(Boolean) as string[])],
+    [leads],
   );
 
   const [filters, setFilters] = useState<OnsiteFilters>(emptyFilters);
@@ -365,6 +365,7 @@ function OnlineRow({ lead, index }: { lead: Lead; index: number }) {
   const { user } = useAuth();
   const canEdit = hasPermission(user?.permissions, 'editLeads', user?.role);
   const canAssign = hasPermission(user?.permissions, 'assignTechnicians', user?.role);
+  const canUseActions = canUseLeadActions(user?.role);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
 
@@ -389,11 +390,13 @@ function OnlineRow({ lead, index }: { lead: Lead; index: number }) {
           onToggleHistory={() => setHistoryOpen((open) => !open)}
         />
         <td className="px-3 py-3 align-top">
-          <div className="space-y-1">
-            {['Not Converted', 'Missed Call', 'Customer Converted'].map((action) => (
-              <button key={action} type="button" className="block text-xs text-slate-500 underline hover:text-brand-600">{action}</button>
-            ))}
-          </div>
+          {canUseActions && (
+            <div className="space-y-1">
+              {['Not Converted', 'Missed Call', 'Customer Converted'].map((action) => (
+                <button key={action} type="button" className="block text-xs text-slate-500 underline hover:text-brand-600">{action}</button>
+              ))}
+            </div>
+          )}
           {canEdit && (
             <button
               type="button"

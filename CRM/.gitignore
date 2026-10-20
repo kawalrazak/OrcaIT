@@ -12,6 +12,7 @@ dist-ssr
 data/leads.db
 data/leads.db-*
 data/leads.csv
+data/user-passwords.json
 
 # Editor
 .vscode/*

@@ -1,11 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AccountsProvider } from './context/AccountsContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext';
 import { LeadsProvider } from './context/LeadsContext';
 import AppLayout from './components/AppLayout';
 import PermissionRoute from './components/PermissionRoute';
 import LoginPage from './pages/LoginPage';
-import SignupPage from './pages/SignupPage';
 import DashboardPage from './pages/DashboardPage';
 import AddLeadPage from './pages/AddLeadPage';
 import ManageLeadsPage from './pages/ManageLeadsPage';
@@ -18,13 +18,23 @@ import ActivityLogPage from './pages/ActivityLogPage';
 import { hasPermission } from './utils/permissions';
 import type { ReactNode } from 'react';
 
+function AuthLoading() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-slate-50 text-sm text-slate-500">
+      Checking sign-in…
+    </div>
+  );
+}
+
 function ProtectedRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { authReady, isAuthenticated } = useAuth();
+  if (!authReady) return <AuthLoading />;
   return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
 }
 
 function ManageUsersRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated, user } = useAuth();
+  const { authReady, isAuthenticated, user } = useAuth();
+  if (!authReady) return <AuthLoading />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (!hasPermission(user?.permissions, 'manageUsers', user?.role)) {
     return <Navigate to="/dashboard" replace />;
@@ -33,19 +43,21 @@ function ManageUsersRoute({ children }: { children: ReactNode }) {
 }
 
 function PublicRoute({ children }: { children: ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { authReady, isAuthenticated } = useAuth();
+  if (!authReady) return <AuthLoading />;
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : <>{children}</>;
 }
 
 export default function App() {
   return (
     <BrowserRouter>
+      <ToastProvider>
       <AccountsProvider>
         <AuthProvider>
           <LeadsProvider>
             <Routes>
               <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-              <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
+              <Route path="/signup" element={<Navigate to="/login" replace />} />
               <Route
                 element={
                   <ProtectedRoute>
@@ -68,6 +80,7 @@ export default function App() {
           </LeadsProvider>
         </AuthProvider>
       </AccountsProvider>
+      </ToastProvider>
     </BrowserRouter>
   );
 }

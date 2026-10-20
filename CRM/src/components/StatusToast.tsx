@@ -58,7 +58,7 @@ export default function StatusToast({
   const Icon = styles.Icon;
 
   return (
-    <div className="pointer-events-none fixed right-4 top-4 z-[80] w-[min(100%-2rem,24rem)]">
+    <div className="pointer-events-none fixed bottom-4 right-4 z-[80] w-[min(100%-2rem,24rem)]">
       <div
         role="status"
         className={`pointer-events-auto overflow-hidden rounded-xl border bg-white shadow-2xl ${styles.border}`}

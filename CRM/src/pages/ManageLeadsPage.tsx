@@ -18,7 +18,7 @@ import LeadInlineHistory from '../components/LeadInlineHistory';
 import { useLeads } from '../context/LeadsContext';
 import { useAccounts } from '../context/AccountsContext';
 import { useAuth } from '../context/AuthContext';
-import { hasPermission } from '../utils/permissions';
+import { canUseLeadActions, hasPermission } from '../utils/permissions';
 import { editFormToLeadUpdates } from '../utils/leadForm';
 import { ISSUE_TYPES, DEVICE_TYPES, LEAD_STATUSES } from '../data/constants';
 import type { EditLeadForm, Lead, LeadFilters } from '../types';
@@ -34,7 +34,7 @@ import {
   sendSms,
   sendEmail,
 } from '../utils/sms';
-import { createZellerCheckoutSession } from '../utils/zeller';
+import { isPayablePaymentLink } from '../utils/zeller';
 import type { ZellerCheckoutInvoice } from '../utils/zeller';
 const emptyFilters: LeadFilters = {
   name: '',
@@ -440,6 +440,7 @@ function LeadRow({
   const canEdit = hasPermission(user?.permissions, 'editLeads', user?.role);
   const canDelete = hasPermission(user?.permissions, 'deleteLeads', user?.role);
   const canAssign = hasPermission(user?.permissions, 'assignTechnicians', user?.role);
+  const canUseActions = canUseLeadActions(user?.role);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -451,7 +452,6 @@ function LeadRow({
   const [sendingEmail, setSendingEmail] = useState(false);
   const [result, setResult] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [invoiceAmount, setInvoiceAmount] = useState(String(defaultInvoiceAmount(lead) || ''));
-  const [creatingCheckout, setCreatingCheckout] = useState(false);
   const [checkoutInvoice, setCheckoutInvoice] = useState<ZellerCheckoutInvoice | null>(null);
 
   const technician = lead.assignedClientId ? getAccountById(lead.assignedClientId) : undefined;
@@ -564,8 +564,12 @@ function LeadRow({
 
     if (target === 'invoice') {
       setInvoiceAmount(String(defaultInvoiceAmount(lead) || lead.paymentAmount || ''));
+      const savedPaymentUrl =
+        lead.zellerPaymentUrl && isPayablePaymentLink(lead.zellerPaymentUrl)
+          ? lead.zellerPaymentUrl
+          : '';
       setCheckoutInvoice(
-        lead.zellerPaymentUrl
+        savedPaymentUrl
           ? {
               id: lead.zellerSessionId || '',
               leadId: lead.id,
@@ -574,7 +578,7 @@ function LeadRow({
               amountCents: Math.round((defaultInvoiceAmount(lead) || 0) * 100),
               amountDollars: defaultInvoiceAmount(lead) || 0,
               currency: 'AUD',
-              paymentUrl: lead.zellerPaymentUrl,
+              paymentUrl: savedPaymentUrl,
               status: lead.invoiceStatus || 'pending',
             }
           : null,
@@ -618,56 +622,33 @@ function LeadRow({
     setModalOpen(true);
   }
 
-  async function handleCreateCheckout() {
-    const amount = Number(invoiceAmount);
-    if (!(amount > 0)) {
-      setResult({ type: 'error', text: 'Enter a valid invoice amount before creating a Zeller link.' });
+  function handlePaymentUrlChange(value: string) {
+    const amount = Number(invoiceAmount) || defaultInvoiceAmount(lead) || 0;
+    setCheckoutInvoice({
+      id: checkoutInvoice?.id || '',
+      leadId: lead.id,
+      referenceId: checkoutInvoice?.referenceId || lead.zellerReferenceId || '',
+      sessionId: checkoutInvoice?.sessionId || lead.zellerSessionId || '',
+      amountCents: Math.round(amount * 100),
+      amountDollars: amount,
+      currency: 'AUD',
+      paymentUrl: value,
+      status: lead.invoiceStatus || 'pending',
+    });
+    if (value.trim() && !isPayablePaymentLink(value)) {
+      setResult({
+        type: 'error',
+        text: 'That is not a payable Zeller link. Copy the link from Zeller Virtual Terminal.',
+      });
       return;
     }
-
-    setCreatingCheckout(true);
     setResult(null);
-    try {
-      const response = await createZellerCheckoutSession({
-        leadId: lead.id,
-        amount,
-        customerName: lead.name,
-        customerPhone: lead.phone,
-        customerEmail: lead.email,
-        description: `Orca IT invoice — ${lead.name} — ${lead.issueType || 'support'}`,
-      });
-
-      if (!response.ok || !response.invoice) {
-        setResult({ type: 'error', text: response.error || 'Failed to create Zeller checkout session.' });
-        return;
-      }
-
-      setCheckoutInvoice(response.invoice);
-      setMessage(
-        buildInvoiceMessage(lead, {
-          amountDollars: response.invoice.amountDollars,
-          paymentUrl: response.invoice.paymentUrl,
-          referenceId: response.invoice.referenceId,
-        }),
-      );
-      setResult({
-        type: 'success',
-        text: response.mock
-          ? 'Mock Zeller payment link created. Configure ZELLER_API_KEY for live checkout.'
-          : 'Zeller payment link created. Review the SMS and send.',
-      });
-    } catch {
-      setResult({ type: 'error', text: 'Unable to reach Zeller checkout API.' });
-    } finally {
-      setCreatingCheckout(false);
-    }
   }
 
   function closeModal() {
     setModalOpen(false);
     setSending(false);
     setSendingEmail(false);
-    setCreatingCheckout(false);
     setResult(null);
   }
 
@@ -680,7 +661,7 @@ function LeadRow({
       zellerReferenceId: checkoutInvoice?.referenceId,
       zellerSessionId: checkoutInvoice?.sessionId,
       zellerPaymentUrl: checkoutInvoice?.paymentUrl,
-      paymentAmount: checkoutInvoice?.amountDollars ?? (Number(invoiceAmount) || undefined),
+      paymentAmount: Number(invoiceAmount) > 0 ? Number(invoiceAmount) : checkoutInvoice?.amountDollars,
       ...extra,
     };
   }
@@ -695,8 +676,8 @@ function LeadRow({
       setResult({ type: 'error', text: 'Message cannot be empty.' });
       return;
     }
-    if (modalTarget === 'invoice' && !checkoutInvoice?.paymentUrl) {
-      setResult({ type: 'error', text: 'Create a Zeller payment link before sending.' });
+    if (modalTarget === 'invoice' && !isPayablePaymentLink(checkoutInvoice?.paymentUrl || '')) {
+      setResult({ type: 'error', text: 'Paste the payment link from Zeller Virtual Terminal before sending.' });
       return;
     }
     if (modalTarget === 'invoice' && invoiceSmsSent) {
@@ -752,8 +733,8 @@ function LeadRow({
       setResult({ type: 'error', text: 'Message cannot be empty.' });
       return;
     }
-    if (!checkoutInvoice?.paymentUrl) {
-      setResult({ type: 'error', text: 'Create a Zeller payment link before sending.' });
+    if (!isPayablePaymentLink(checkoutInvoice?.paymentUrl || '')) {
+      setResult({ type: 'error', text: 'Paste the payment link from Zeller Virtual Terminal before sending.' });
       return;
     }
     if (invoiceEmailSent) {
@@ -765,7 +746,7 @@ function LeadRow({
     setResult(null);
 
     try {
-      const amount = checkoutInvoice.amountDollars || Number(invoiceAmount) || 0;
+      const amount = Number(invoiceAmount) || checkoutInvoice?.amountDollars || 0;
       const response = await sendEmail({
         to: email,
         subject: `Orca IT Invoice — $${amount.toFixed(2)} AUD`,
@@ -803,6 +784,7 @@ function LeadRow({
           onToggleHistory={() => setHistoryOpen((open) => !open)}
         />
         <td className="bg-slate-100 px-0 py-2 align-top">
+          {canUseActions ? (
           <div className="grid grid-cols-[1fr_auto] divide-x divide-slate-200">
             {lead.isOnsite ? (
               <div className="space-y-0.5 px-1.5">
@@ -982,6 +964,20 @@ function LeadRow({
               </div>
             </div>
           </div>
+          ) : (
+            <div className="flex items-center justify-center px-2 py-2">
+              {canEdit && (
+                <button
+                  type="button"
+                  onClick={() => setEditOpen(true)}
+                  title="Edit lead details"
+                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-sky-500 text-white shadow-sm transition-colors hover:bg-sky-600"
+                >
+                  <SquarePen size={14} />
+                </button>
+              )}
+            </div>
+          )}
         </td>
       </tr>
 
@@ -1041,14 +1037,10 @@ function LeadRow({
         onSend={handleSend}
         onSendEmail={handleSendEmail}
         invoiceAmount={invoiceAmount}
-        onInvoiceAmountChange={(value) => {
-          setInvoiceAmount(value);
-          setCheckoutInvoice(null);
-        }}
+        onInvoiceAmountChange={setInvoiceAmount}
         invoicePaymentUrl={checkoutInvoice?.paymentUrl}
         invoiceReferenceId={checkoutInvoice?.referenceId}
-        creatingCheckout={creatingCheckout}
-        onCreateCheckout={handleCreateCheckout}
+        onInvoicePaymentUrlChange={handlePaymentUrlChange}
         invoiceSmsSent={invoiceSmsSent}
         invoiceEmailSent={invoiceEmailSent}
       />

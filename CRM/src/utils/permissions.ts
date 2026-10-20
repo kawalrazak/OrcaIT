@@ -27,7 +27,7 @@ export const LAYER2_SERVICE_COORDINATOR: Permissions = {
   viewMyTasks: false,
   viewActivityLog: false,
   editLeads: true,
-  deleteLeads: false,
+  deleteLeads: true,
   assignTechnicians: true,
   manageAppointments: true,
   manageUsers: false,
@@ -51,13 +51,13 @@ export const LAYER3_ADMINISTRATOR: Permissions = {
   managePermissions: true,
 };
 
-/** Field technician — receives assigned tasks */
+/** Field technician — can work leads, but cannot send actions or delete */
 export const TECHNICIAN_DEFAULT_PERMISSIONS: Permissions = {
   viewDashboard: true,
-  viewAddLead: false,
-  viewManageLeads: false,
-  viewOnsiteAppointments: false,
-  viewOnlineAppointments: false,
+  viewAddLead: true,
+  viewManageLeads: true,
+  viewOnsiteAppointments: true,
+  viewOnlineAppointments: true,
   viewMyTasks: true,
   viewActivityLog: false,
   editLeads: true,
@@ -100,19 +100,24 @@ export const NAV_PERMISSIONS: Record<string, NavPermissionKey> = {
 
 export const PERMISSION_LABELS: { key: keyof Permissions; label: string; role: string }[] = [
   { key: 'viewDashboard', label: 'View Dashboard', role: 'All staff' },
-  { key: 'viewAddLead', label: 'Create Leads', role: 'Support Associate+' },
-  { key: 'viewManageLeads', label: 'View / Manage Leads', role: 'Support Associate+' },
-  { key: 'editLeads', label: 'Edit Lead Data', role: 'Support Associate+' },
+  { key: 'viewAddLead', label: 'Create Leads', role: 'All staff' },
+  { key: 'viewManageLeads', label: 'View / Manage Leads', role: 'All staff' },
+  { key: 'editLeads', label: 'Edit Lead Data', role: 'All staff' },
   { key: 'assignTechnicians', label: 'Assign Technicians', role: 'Service Coordinator+' },
   { key: 'manageAppointments', label: 'Manage Appointments', role: 'Service Coordinator+' },
-  { key: 'viewOnsiteAppointments', label: 'Onsite Appointments', role: 'Service Coordinator+' },
-  { key: 'viewOnlineAppointments', label: 'Online Appointments', role: 'Service Coordinator+' },
+  { key: 'viewOnsiteAppointments', label: 'Onsite Appointments', role: 'Technician, Coordinator, Admin' },
+  { key: 'viewOnlineAppointments', label: 'Online Appointments', role: 'Technician, Coordinator, Admin' },
   { key: 'viewMyTasks', label: 'My Tasks', role: 'Technician' },
   { key: 'viewActivityLog', label: 'View Activity Log', role: 'Administrator only' },
-  { key: 'deleteLeads', label: 'Delete Records', role: 'Administrator only' },
+  { key: 'deleteLeads', label: 'Delete Records', role: 'Administrator and Service Coordinator' },
   { key: 'manageUsers', label: 'Manage User Accounts', role: 'Administrator only' },
   { key: 'managePermissions', label: 'Modify Permissions', role: 'Administrator only' },
 ];
+
+/** Quote, invoice, and appointment action buttons. Technicians can edit a lead, but not these. */
+export function canUseLeadActions(role: UserRole | undefined): boolean {
+  return role === 'administrator' || role === 'service_coordinator' || role === 'support_associate';
+}
 
 export function isAdministrator(role: UserRole | undefined): boolean {
   return role === 'administrator';

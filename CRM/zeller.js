@@ -83,25 +83,11 @@ export async function createCheckoutSession({
   const reference = referenceId || `INV-${randomUUID().slice(0, 8).toUpperCase()}`;
 
   if (config.mockMode || !config.apiKey) {
-    if (!config.mockMode && !config.apiKey) {
-      return {
-        ok: false,
-        error:
-          'Zeller is not configured. Set ZELLER_API_KEY (and ZELLER_API_BASE_URL) or ZELLER_MOCK_MODE=true.',
-      };
-    }
-
-    const sessionId = `mock_${randomUUID()}`;
-    const paymentUrl = `https://payment.myzeller.com/mock/${encodeURIComponent(reference)}`;
     return {
-      ok: true,
-      mock: true,
-      sessionId,
-      referenceId: reference,
-      amountCents,
-      currency: config.currency,
-      paymentUrl,
-      raw: { mock: true, id: sessionId, payment_url: paymentUrl, reference_id: reference },
+      ok: false,
+      manual: true,
+      error:
+        'Zeller has not published a server API for payment links. Copy a real link from Zeller Virtual Terminal and paste it into the invoice.',
     };
   }
 

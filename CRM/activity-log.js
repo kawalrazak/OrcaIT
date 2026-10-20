@@ -7,6 +7,12 @@ const ACTION_LABELS = {
   'lead.update': 'Updated lead',
   'lead.delete': 'Deleted lead',
   'invoice.email': 'Sent invoice email',
+  'user.create': 'Created user',
+  'user.update': 'Updated user',
+  'user.password_reset': 'Reset password',
+  'user.password_email': 'Emailed password reset',
+  'user.role_update': 'Changed role',
+  'user.delete': 'Deleted user',
 };
 
 function buildSummary(record) {

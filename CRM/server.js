@@ -8,6 +8,8 @@ import twilio from 'twilio';
 import { createLeadsStore } from './leads-db.js';
 import { createZellerInvoicesStore } from './zeller-invoices-db.js';
 import { createActivityLogger } from './activity-log.js';
+import { createKeycloakAdmin } from './keycloak-admin.js';
+import { createPasswordStore } from './password-store.js';
 import { createEmailSender } from './email.js';
 import {
   createCheckoutSession,
@@ -23,6 +25,8 @@ const dataDir = path.join(__dirname, 'data');
 const leadsStore = createLeadsStore({ dataDir });
 const zellerInvoicesStore = createZellerInvoicesStore({ dataDir });
 const activityLog = createActivityLogger({ dataDir });
+const keycloakAdmin = createKeycloakAdmin();
+const passwordStore = createPasswordStore({ dataDir });
 const emailSender = createEmailSender();
 const isProduction =
   process.env.NODE_ENV === 'production' ||
@@ -43,7 +47,7 @@ app.use(
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
@@ -256,6 +260,225 @@ app.get('/api/activity', async (req, res) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unable to load activity log.';
     res.status(500).json({ ok: false, error: message });
+  }
+});
+
+async function requireAdmin(req, res) {
+  try {
+    const actor = await keycloakAdmin.verifyAdministrator(req.headers.authorization);
+    if (!actor) {
+      res.status(401).json({ ok: false, error: 'Administrator sign-in is required.' });
+      return null;
+    }
+    return actor;
+  } catch (error) {
+    const status = error.status || 502;
+    res.status(status).json({ ok: false, error: error.message || 'Keycloak is unavailable.' });
+    return null;
+  }
+}
+
+function sendKeycloakError(res, error, fallback) {
+  const status = error.status || 500;
+  res.status(status).json({ ok: false, error: error.message || fallback });
+}
+
+app.get('/api/users', async (req, res) => {
+  const actor = await requireAdmin(req, res);
+  if (!actor) return;
+  try {
+    const users = await keycloakAdmin.listUsers();
+    const stored = await passwordStore.ids();
+    res.json({
+      ok: true,
+      users: users.map((user) => ({ ...user, passwordOnFile: stored.has(user.id) })),
+    });
+  } catch (error) {
+    sendKeycloakError(res, error, 'Could not load users.');
+  }
+});
+
+app.post('/api/users', async (req, res) => {
+  const actor = await requireAdmin(req, res);
+  if (!actor) return;
+  try {
+    const user = await keycloakAdmin.createUser(req.body || {});
+    await passwordStore.set(user.id, String(req.body?.password || ''));
+    await activityLog.log({
+      action: 'user.create',
+      success: true,
+      accountName: user.name,
+      accountId: user.id,
+      performedById: actor.id,
+      performedByName: actor.name,
+      performedByUsername: actor.username,
+      summary: `${actor.name || actor.username} created user "${user.name}" (@${user.username}) as ${user.role}.`,
+    });
+    res.status(201).json({ ok: true, user });
+  } catch (error) {
+    sendKeycloakError(res, error, 'Could not create the user.');
+  }
+});
+
+app.put('/api/users/:id/role', async (req, res) => {
+  const actor = await requireAdmin(req, res);
+  if (!actor) return;
+  if (req.params.id === actor.id) {
+    return res.status(400).json({ ok: false, error: 'You cannot change your own role.' });
+  }
+  try {
+    await keycloakAdmin.setRole(req.params.id, req.body?.role);
+    await activityLog.log({
+      action: 'user.role_update',
+      success: true,
+      accountId: req.params.id,
+      accountName: asString(req.body?.name) || req.params.id,
+      performedById: actor.id,
+      performedByName: actor.name,
+      performedByUsername: actor.username,
+      summary: `${actor.name || actor.username} changed ${asString(req.body?.name) || 'a user'} to ${asString(req.body?.role)}.`,
+    });
+    res.json({ ok: true });
+  } catch (error) {
+    sendKeycloakError(res, error, 'Could not update the role.');
+  }
+});
+
+app.put('/api/users/:id', async (req, res) => {
+  const actor = await requireAdmin(req, res);
+  if (!actor) return;
+  try {
+    const user = await keycloakAdmin.updateUser(req.params.id, req.body || {});
+    await activityLog.log({
+      action: 'user.update',
+      success: true,
+      accountName: user.name,
+      accountId: user.id,
+      performedById: actor.id,
+      performedByName: actor.name,
+      performedByUsername: actor.username,
+      summary: `${actor.name || actor.username} updated details for "${user.name}" (@${user.username}).`,
+    });
+    res.json({ ok: true, user });
+  } catch (error) {
+    sendKeycloakError(res, error, 'Could not update the user.');
+  }
+});
+
+app.get('/api/users/:id/password', async (req, res) => {
+  const actor = await requireAdmin(req, res);
+  if (!actor) return;
+  try {
+    const password = await passwordStore.get(req.params.id);
+    if (!password) {
+      return res.status(404).json({
+        ok: false,
+        error: 'This password is not on file yet. Save a new password, then the eye can show it.',
+      });
+    }
+    res.json({ ok: true, password });
+  } catch (error) {
+    sendKeycloakError(res, error, 'Could not show the password.');
+  }
+});
+
+app.put('/api/users/:id/password', async (req, res) => {
+  const actor = await requireAdmin(req, res);
+  if (!actor) return;
+  try {
+    await keycloakAdmin.resetPassword(req.params.id, req.body?.password);
+    await passwordStore.set(req.params.id, String(req.body?.password || ''));
+    await activityLog.log({
+      action: 'user.password_reset',
+      success: true,
+      accountId: req.params.id,
+      accountName: asString(req.body?.name) || req.params.id,
+      performedById: actor.id,
+      performedByName: actor.name,
+      performedByUsername: actor.username,
+      summary: `${actor.name || actor.username} reset the password for ${asString(req.body?.name) || 'a user'}.`,
+    });
+    res.json({ ok: true });
+  } catch (error) {
+    sendKeycloakError(res, error, 'Could not reset the password.');
+  }
+});
+
+app.post('/api/users/:id/password-email', async (req, res) => {
+  const actor = await requireAdmin(req, res);
+  if (!actor) return;
+  try {
+    const users = await keycloakAdmin.listUsers();
+    const account = users.find((user) => user.id === req.params.id);
+    if (!account) return res.status(404).json({ ok: false, error: 'User was not found.' });
+    if (!account.email) {
+      return res.status(400).json({ ok: false, error: 'Add an email address before sending a password reset.' });
+    }
+    const password = await keycloakAdmin.assignGeneratedPassword(req.params.id);
+    await passwordStore.set(req.params.id, password);
+    try {
+      await emailSender.sendMail({
+        to: account.email,
+        subject: 'Your ORCA IT CRM password',
+        text: [
+          `Hello ${account.name},`,
+          '',
+          'An administrator set a new password for your ORCA IT CRM account.',
+          '',
+          `Username: ${account.username}`,
+          `Password: ${password}`,
+          '',
+          'Sign in at https://crm.orcait.com.au/login',
+          '',
+          'ORCA IT',
+        ].join('\n'),
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Email could not be sent.';
+      return res.status(502).json({
+        ok: false,
+        error: `The password was changed, but the email could not be sent. ${message}`,
+        password,
+      });
+    }
+    await activityLog.log({
+      action: 'user.password_email',
+      success: true,
+      accountId: account.id,
+      accountName: account.name,
+      performedById: actor.id,
+      performedByName: actor.name,
+      performedByUsername: actor.username,
+      summary: `${actor.name || actor.username} emailed a new password to ${account.name}.`,
+    });
+    res.json({ ok: true, password });
+  } catch (error) {
+    sendKeycloakError(res, error, 'Could not email a password reset.');
+  }
+});
+
+app.delete('/api/users/:id', async (req, res) => {
+  const actor = await requireAdmin(req, res);
+  if (!actor) return;
+  if (req.params.id === actor.id) {
+    return res.status(400).json({ ok: false, error: 'You cannot delete your own account.' });
+  }
+  try {
+    await keycloakAdmin.deleteUser(req.params.id);
+    await passwordStore.remove(req.params.id);
+    await activityLog.log({
+      action: 'user.delete',
+      success: true,
+      accountId: req.params.id,
+      accountName: asString(req.query.name) || req.params.id,
+      performedById: actor.id,
+      performedByName: actor.name,
+      performedByUsername: actor.username,
+      summary: `${actor.name || actor.username} deleted user ${asString(req.query.name) || req.params.id}.`,
+    });
+    res.json({ ok: true });
+  } catch (error) {
+    sendKeycloakError(res, error, 'Could not delete the user.');
   }
 });
 

@@ -1,17 +1,25 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { User } from '../types';
-import { useAccounts } from './AccountsContext';
 import {
   isAdministrator,
   isTechnicianRole,
   isStaffRole,
-  migrateRole,
-  normalizePermissions,
-  PERMISSIONS_BY_ROLE,
 } from '../utils/permissions';
+import { useAccounts } from './AccountsContext';
+import { useToast } from './ToastContext';
+import {
+  initKeycloak,
+  keycloak,
+  keycloakConfigured,
+  loginWithKeycloak,
+  logoutKeycloak,
+  userFromKeycloak,
+} from '../lib/keycloak';
 
 interface AuthContextType {
   user: User | null;
+  authReady: boolean;
+  authError: string;
   isAuthenticated: boolean;
   isAdmin: boolean;
   isClient: boolean;
@@ -20,129 +28,72 @@ interface AuthContextType {
   isSupportAssociate: boolean;
   isTechnician: boolean;
   isStaff: boolean;
-  login: (username: string, password: string, remember: boolean) => boolean;
+  login: () => void;
   logout: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
-const USER_STORAGE_KEY = 'careit_user';
-
-function formatLastLogin(): string {
-  return new Date().toLocaleString('en-AU', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: true,
-  });
-}
-
-function permissionsForRole(
-  role: User['role'],
-  permissions: User['permissions'] | undefined,
-): User['permissions'] {
-  // Merge role defaults first so newly added flags (e.g. viewActivityLog) appear for admins.
-  const merged = normalizePermissions({
-    ...PERMISSIONS_BY_ROLE[role],
-    ...(permissions ?? {}),
-  });
-  if (isAdministrator(role)) {
-    merged.viewActivityLog = true;
-  }
-  return merged;
-}
-
-function loadUser(): User | null {
-  try {
-    const saved = localStorage.getItem(USER_STORAGE_KEY) ?? sessionStorage.getItem(USER_STORAGE_KEY);
-    if (!saved) return null;
-    const raw = JSON.parse(saved) as User & { role?: string };
-    const role = migrateRole(raw.role ?? 'technician');
-    return {
-      ...raw,
-      role,
-      permissions: permissionsForRole(role, raw.permissions),
-    };
-  } catch {
-    return null;
-  }
-}
-
-function persistUser(user: User | null, remember: boolean) {
-  sessionStorage.removeItem(USER_STORAGE_KEY);
-  localStorage.removeItem(USER_STORAGE_KEY);
-  if (user) {
-    const storage = remember ? localStorage : sessionStorage;
-    storage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-  }
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { authenticate, getAccountById, accounts } = useAccounts();
-  const [user, setUser] = useState<User | null>(loadUser);
-  const [rememberMe] = useState(() => !!localStorage.getItem(USER_STORAGE_KEY));
+  const { refreshUsers } = useAccounts();
+  const { notify } = useToast();
+  const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
-    setUser((current) => {
-      if (!current) return current;
-      const account = getAccountById(current.id);
-      if (!account) return current;
+    if (user) void refreshUsers();
+  }, [user, refreshUsers]);
 
-      const updated: User = {
-        ...current,
-        name: account.name,
-        email: account.email,
-        phone: account.phone,
-        role: account.role,
-        permissions: permissionsForRole(account.role, account.permissions),
-      };
-
-      const changed =
-        current.name !== updated.name ||
-        current.email !== updated.email ||
-        current.phone !== updated.phone ||
-        current.role !== updated.role ||
-        JSON.stringify(current.permissions) !== JSON.stringify(updated.permissions);
-
-      if (!changed) return current;
-
-      persistUser(updated, rememberMe);
-      return updated;
+  useEffect(() => {
+    if (!authReady || !user) return;
+    const authTime = keycloak.tokenParsed?.auth_time;
+    if (!authTime || Date.now() / 1000 - Number(authTime) > 45) return;
+    const key = `orcait-login-toast-${authTime}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    notify({
+      type: 'success',
+      title: 'Signed in',
+      message: `Welcome back, ${user.name || user.username}.`,
     });
-  }, [accounts, getAccountById, rememberMe]);
+  }, [authReady, notify, user]);
 
-  const login = useCallback(
-    (username: string, password: string, remember: boolean) => {
-      const account = authenticate(username, password);
-      if (!account) return false;
+  useEffect(() => {
+    let cancelled = false;
+    if (!keycloakConfigured()) {
+      setAuthError('Keycloak is not configured.');
+      setAuthReady(true);
+      return;
+    }
 
-      const loggedInUser: User = {
-        id: account.id,
-        username: account.username,
-        name: account.name,
-        email: account.email,
-        phone: account.phone,
-        role: account.role,
-        permissions: permissionsForRole(account.role, account.permissions),
-        lastLogin: formatLastLogin(),
-      };
+    initKeycloak()
+      .then(() => {
+        if (cancelled) return;
+        setUser(userFromKeycloak());
+        setAuthReady(true);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAuthError('Keycloak sign-in is unavailable.');
+        setAuthReady(true);
+      });
 
-      setUser(loggedInUser);
-      persistUser(loggedInUser, remember);
-      return true;
-    },
-    [authenticate],
-  );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const login = useCallback(() => {
+    setAuthError('');
+    void loginWithKeycloak();
+  }, []);
 
   const logout = useCallback(() => {
+    sessionStorage.setItem('orcait-signed-out', user?.name || 'You');
     setUser(null);
-    localStorage.removeItem(USER_STORAGE_KEY);
-    sessionStorage.removeItem(USER_STORAGE_KEY);
-  }, []);
+    void logoutKeycloak();
+  }, [user]);
 
   const role = user?.role;
 
@@ -150,6 +101,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider
       value={{
         user,
+        authReady,
+        authError,
         isAuthenticated: !!user,
         isAdmin: isAdministrator(role),
         isClient: isTechnicianRole(role),

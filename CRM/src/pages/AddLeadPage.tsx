@@ -5,6 +5,7 @@ import Breadcrumbs from '../components/Breadcrumbs';
 import { useLeads } from '../context/LeadsContext';
 import { useAccounts } from '../context/AccountsContext';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { hasPermission } from '../utils/permissions';
 import DateInput from '../components/DateInput';
 import { ISSUE_TYPES, DEVICE_TYPES, OUTCOMES, APPOINTMENT_TYPES } from '../data/constants';
@@ -113,6 +114,7 @@ export default function AddLeadPage() {
   const [customerQuery, setCustomerQuery] = useState('');
   const [selectedCustomerKey, setSelectedCustomerKey] = useState<string | null>(null);
   const { addLead, leads } = useLeads();
+  const { notify } = useToast();
   const { technicianAccounts } = useAccounts();
   const { user } = useAuth();
   const canAssign = hasPermission(user?.permissions, 'assignTechnicians', user?.role);
@@ -186,11 +188,22 @@ export default function AddLeadPage() {
       const payload = canAssign ? form : { ...form, assignedClientId: '' };
       const result = await addLead(payload);
       if (result.success) {
+        notify({
+          type: 'success',
+          title: 'Lead created',
+          message: `${form.customerName.trim() || 'The lead'} was added.`,
+        });
         navigate('/manage-leads');
       } else {
+        notify({
+          type: 'error',
+          title: 'Could not save lead',
+          message: result.error ?? 'Failed to save lead.',
+        });
         setError(result.error ?? 'Failed to save lead.');
       }
     } catch {
+      notify({ type: 'error', title: 'Could not save lead', message: 'Failed to save lead.' });
       setError('Failed to save lead.');
     } finally {
       setSaving(false);
